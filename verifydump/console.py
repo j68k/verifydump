@@ -14,5 +14,5 @@ def main():
 
     logging.basicConfig(format="%(message)s", level=logging.DEBUG if args.verbose else logging.INFO)
 
-    load_dat(pathlib.Path(args.dat_file))
-    verify_dumps([pathlib.Path(i) for i in args.dump_file_or_folder])
+    dat = load_dat(pathlib.Path(args.dat_file))
+    verify_dumps(dat, [pathlib.Path(i) for i in args.dump_file_or_folder])
