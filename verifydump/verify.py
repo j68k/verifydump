@@ -9,6 +9,7 @@ class Dat:
     def __init__(self, system: str):
         self.system = system
         self.games = []
+        self.roms_by_sha1hex = {}
 
 
 class Game:
@@ -59,6 +60,7 @@ class DatParser:
             )
 
             self.game.roms.append(rom)
+            self.dat.roms_by_sha1hex[rom.sha1hex] = rom
 
     def _get_required_attrib(self, attribs, name) -> str:
         value = attribs.get(name)
