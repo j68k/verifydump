@@ -2,11 +2,93 @@ import logging
 import os
 import pathlib
 import typing
+from xml.etree import ElementTree
 
 
-def load_dat(dat_path: pathlib.Path):
-    logging.debug(f"Loading DAT file: {dat_path}")
-    pass  # FIXME implement
+class Dat:
+    def __init__(self, system: str):
+        self.system = system
+        self.games = []
+
+
+class Game:
+    def __init__(self, name: str, dat: Dat):
+        self.name = name
+        self.roms = []
+        self.dat = dat
+
+
+class ROM:
+    def __init__(self, name: str, size: int, sha1hex: str, game: Game):
+        self.name = name
+        self.size = size
+        self.sha1hex = sha1hex
+        self.game = game
+
+
+class DatParsingException(Exception):
+    pass
+
+
+class DatParser:
+    def __init__(self):
+        self.tag_path = []
+        self.dat = None
+        self.game = None
+
+    def start(self, tag, attribs):
+        self.tag_path.append(tag)
+
+        if self.tag_path == ["datafile", "game"]:
+            if self.game:
+                raise DatParsingException("Found a <game> within another <game>")
+            if not self.dat:
+                raise DatParsingException("Found a <game> before the <header> was parsed")
+
+            self.game = Game(name=self._get_required_attrib(attribs, "name"), dat=self.dat)
+
+        elif self.tag_path == ["datafile", "game", "rom"]:
+            if not self.game:
+                raise DatParsingException("Found a <rom> that was not within a <game>")
+
+            rom = ROM(
+                name=self._get_required_attrib(attribs, "name"),
+                size=self._get_required_attrib(attribs, "size"),
+                sha1hex=self._get_required_attrib(attribs, "sha1"),
+                game=self.game,
+            )
+
+            self.game.roms.append(rom)
+
+    def _get_required_attrib(self, attribs, name) -> str:
+        value = attribs.get(name)
+        if not value:
+            raise DatParsingException(f"Found a <{self.tag_path[-1]}> without a {name} attribute")
+        return value
+
+    def end(self, tag):
+        if self.tag_path == ["datafile", "game"]:
+            self.dat.games.append(self.game)
+            self.game = None
+
+        self.tag_path.pop()
+
+    def data(self, data):
+        if self.tag_path == ["datafile", "header", "name"]:
+            self.dat = Dat(system=data)
+
+    def close(self) -> Dat:
+        return self.dat
+
+
+def load_dat(dat_path: pathlib.Path) -> Dat:
+    logging.debug(f"Loading Dat file: {dat_path}")
+    with open(dat_path, "rb") as dat_file:
+        xml_parser = ElementTree.XMLParser(target=DatParser())
+        xml_parser.feed(dat_file.read())
+        dat = xml_parser.close()
+        logging.debug(f"Dat loaded successfully with {len(dat.games)} games")
+        return dat
 
 
 def verify_dump(dump_path: pathlib.Path):
