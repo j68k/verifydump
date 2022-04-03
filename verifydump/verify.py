@@ -1,6 +1,7 @@
 import logging
 import os
 import pathlib
+import shutil
 import typing
 from xml.etree import ElementTree
 
@@ -83,11 +84,19 @@ class DatParser:
         return self.dat
 
 
+class FileLikeParserFeeder:
+    def __init__(self, parser):
+        self.parser = parser
+
+    def write(self, b):
+        self.parser.feed(b)
+
+
 def load_dat(dat_path: pathlib.Path) -> Dat:
     logging.debug(f"Loading Dat file: {dat_path}")
     with open(dat_path, "rb") as dat_file:
         xml_parser = ElementTree.XMLParser(target=DatParser())
-        xml_parser.feed(dat_file.read())
+        shutil.copyfileobj(dat_file, FileLikeParserFeeder(xml_parser))
         dat = xml_parser.close()
         logging.debug(f"Dat loaded successfully with {len(dat.games)} games")
         return dat
