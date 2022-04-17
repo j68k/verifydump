@@ -1,3 +1,5 @@
+import logging
+import os
 import pathlib
 import subprocess
 import sys
@@ -24,7 +26,7 @@ def convert_dump_to_normalized_redump_bincue_folder(dump_file_path: pathlib.Path
     else:
         raise ConversionException(f"{pathlib.Path(sys.argv[0]).stem} doesn't know how to handle '{dump_suffix_lower}' dumps")
 
-    return normalize_redump_cue_file_for_system(cue_file_path, system)
+    return normalize_redump_bincue_dump_for_system(cue_file_path, system)
 
 
 def convert_chd_to_bincue(chd_file_path: pathlib.Path, output_cue_file_path: pathlib.Path):
@@ -35,5 +37,22 @@ def convert_chd_to_bincue(chd_file_path: pathlib.Path, output_cue_file_path: pat
         subprocess.run(["binmerge", "--split", "-o", str(output_cue_file_path.parent), str(chdman_cue_file_path), chdman_cue_file_path.stem], check=True)
 
 
-def normalize_redump_cue_file_for_system(cue_file_path: pathlib.Path, system: str) -> bool:
+def normalize_redump_bincue_dump_for_system(cue_file_path: pathlib.Path, system: str) -> bool:
+    dump_path = cue_file_path.parent
+    dump_name = cue_file_path.stem
+
+    has_multiple_tracks = len(list(dump_path.glob(f"{dump_name} (Track *).bin"))) > 1
+    if not has_multiple_tracks:
+        original_bin_name = f"{dump_name} (Track 1).bin"
+        single_track_bin_name = f"{dump_name}.bin"
+
+        logging.debug(f"Renaming '{original_bin_name}' to '{single_track_bin_name}' because there is only one .bin file in the dump")
+
+        os.rename(
+            pathlib.Path(dump_path, original_bin_name),
+            pathlib.Path(dump_path, single_track_bin_name),
+        )
+
+        cue_file_path.write_text(cue_file_path.read_text().replace(f'FILE "{original_bin_name}"', f'FILE "{single_track_bin_name}"'))
+
     return False  # FIXME implement
