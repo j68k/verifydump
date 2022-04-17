@@ -14,12 +14,14 @@ class VerificationException(Exception):
     pass
 
 
-def verify_dump(dump_path: pathlib.Path, dat: Dat):
+def verify_dump(dump_path: pathlib.Path, dat: Dat) -> Game:
     logging.debug(f"Verifying dump file: {dump_path}")
     with tempfile.TemporaryDirectory() as bincue_folder_name:
         bincue_folder = pathlib.Path(bincue_folder_name)
         cue_was_normalized = convert_dump_to_normalized_redump_bincue_folder(dump_path, bincue_folder, system=dat.system)
-        verify_bincue_folder_dump(bincue_folder, dat=dat)
+        game = verify_bincue_folder_dump(bincue_folder, dat=dat)
+        logging.info(f'Game dump verified correct and complete: "{game.name}"')
+        return game
 
 
 class FileLikeHashUpdater:
