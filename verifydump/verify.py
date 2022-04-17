@@ -44,17 +44,22 @@ def verify_bincue_folder_dump(dump_folder: pathlib.Path, dat: Dat) -> Game:
             shutil.copyfileobj(dump_file, FileLikeHashUpdater(hash))
             dump_file_sha1hex = hash.hexdigest()
 
-        rom = dat.roms_by_sha1hex.get(dump_file_sha1hex)
+        roms_with_matching_sha1 = dat.roms_by_sha1hex.get(dump_file_sha1hex)
 
-        if not rom:
+        if not roms_with_matching_sha1:
             raise VerificationException(f'SHA-1 of dump file "{dump_file_path.name}" doesn\'t match any file in the Dat')
 
-        if rom.name != dump_file_path.name:
-            raise VerificationException(f'Dump file "{dump_file_path.name}" found in Dat, but it should be named "{rom.name}"')
+        rom_with_matching_sha1_and_name = next((rom for rom in roms_with_matching_sha1 if rom.name == dump_file_path.name), None)
 
-        if rom.size != dump_file_path.stat().st_size:
-            print(f"{rom.size} {dump_file_path.stat().st_size}")
+        if not rom_with_matching_sha1_and_name:
+            list_of_rom_names_that_match_sha1 = " or ".join([f'"{rom.name}"' for rom in roms_with_matching_sha1])
+            raise VerificationException(f'Dump file "{dump_file_path.name}" found in Dat, but it should be named {list_of_rom_names_that_match_sha1}')
+
+        if rom_with_matching_sha1_and_name.size != dump_file_path.stat().st_size:
+            print(f"{rom_with_matching_sha1_and_name.size} {dump_file_path.stat().st_size}")
             raise VerificationException(f'Dump file "{dump_file_path.name}" found in Dat, but it has the wrong size')
+
+        rom = rom_with_matching_sha1_and_name
 
         logging.debug(f'Dump file "{rom.name}" found in Dat and verified')
 

@@ -65,7 +65,8 @@ class DatParser:
             )
 
             self.game.roms.append(rom)
-            self.dat.roms_by_sha1hex[rom.sha1hex] = rom
+            roms_with_sha1 = self.dat.roms_by_sha1hex.setdefault(rom.sha1hex, [])
+            roms_with_sha1.append(rom)
 
     def _get_required_attrib(self, attribs, name) -> str:
         value = attribs.get(name)
