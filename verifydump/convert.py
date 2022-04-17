@@ -1,6 +1,7 @@
 import pathlib
 import subprocess
 import sys
+import tempfile
 
 
 class ConversionException(Exception):
@@ -19,15 +20,19 @@ def convert_dump_to_normalized_redump_bincue_folder(dump_file_path: pathlib.Path
     dump_suffix_lower = dump_file_path.suffix.lower()
 
     if dump_suffix_lower == ".chd":
-        convert_chd_to_bincue_in_folder(dump_file_path, cue_file_path)
+        convert_chd_to_bincue(dump_file_path, cue_file_path)
     else:
         raise ConversionException(f"{pathlib.Path(sys.argv[0]).stem} doesn't know how to handle '{dump_suffix_lower}' dumps")
 
     return normalize_redump_cue_file_for_system(cue_file_path, system)
 
 
-def convert_chd_to_bincue_in_folder(chd_file_path: pathlib.Path, cue_file_path: pathlib.Path):
-    subprocess.run(["chdman", "extractcd", "--input", str(chd_file_path), "--output", str(cue_file_path)], check=True)
+def convert_chd_to_bincue(chd_file_path: pathlib.Path, output_cue_file_path: pathlib.Path):
+    # Use another temporary directory for the chdman output files to keep those separate from the binmerge output files:
+    with tempfile.TemporaryDirectory() as chdman_output_folder_path_name:
+        chdman_cue_file_path = pathlib.Path(chdman_output_folder_path_name, output_cue_file_path.name)
+        subprocess.run(["chdman", "extractcd", "--input", str(chd_file_path), "--output", str(chdman_cue_file_path)], check=True)
+        subprocess.run(["binmerge", "--split", "-o", str(output_cue_file_path.parent), str(chdman_cue_file_path), chdman_cue_file_path.stem], check=True)
 
 
 def normalize_redump_cue_file_for_system(cue_file_path: pathlib.Path, system: str) -> bool:
