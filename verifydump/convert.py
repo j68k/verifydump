@@ -55,4 +55,9 @@ def normalize_redump_bincue_dump_for_system(cue_file_path: pathlib.Path, system:
 
         cue_file_path.write_text(cue_file_path.read_text().replace(f'FILE "{original_bin_name}"', f'FILE "{single_track_bin_name}"'))
 
-    return False  # FIXME implement
+    system_lower = system.lower()
+
+    if system_lower in ("Sony - PlayStation".lower(), "psx"):
+        return True
+    else:
+        return False
