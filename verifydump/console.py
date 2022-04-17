@@ -1,6 +1,7 @@
 import argparse
 import logging
 import pathlib
+import sys
 
 from .convert import convert_dump_to_normalized_redump_bincue_folder
 from .verify import verify_dumps
@@ -30,9 +31,11 @@ def verifydump_main():
 
 
 def convertdump_main():
+    tool_name = pathlib.Path(sys.argv[0]).stem
+
     arg_parser = arg_parser_with_common_args()
     arg_parser.add_argument("--output_folder", default=".")
-    arg_parser.add_argument("--system", default=None, help="The name of the system the dumps are for. If given, the tool will normalize the .cue file that it outputs to match the Redump conventions for that system if possible. Use the full system name that is in the Redump Datfile's header <name> field, or use the short name for the system that appears in Redump web site URLs.")
+    arg_parser.add_argument("--system", default=None, help=f"The name of the system the dumps are for. If given, {tool_name} will normalize the .cue file that it outputs to match the Redump conventions for that system if possible. Use the full system name that is in the Redump Datfile's header <name> field, or use the short name for the system that appears in Redump web site URLs.")
     arg_parser.add_argument("dump_file", nargs="+")
     args = arg_parser.parse_args()
 
@@ -41,4 +44,4 @@ def convertdump_main():
     for dump_file_name in args.dump_file:
         dump_cue_was_normalized = convert_dump_to_normalized_redump_bincue_folder(pathlib.Path(dump_file_name), pathlib.Path(args.output_folder), system=args.system)
         if not dump_cue_was_normalized and args.system:
-            logging.warning(f"The .cue file was not normalized to match Redump conventions because the tool doesn't know how to do that for '{args.system}' dumps")
+            logging.warning(f"The .cue file was not normalized to match Redump conventions because {tool_name} doesn't know how to do that for '{args.system}' dumps")
