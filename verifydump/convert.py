@@ -35,7 +35,9 @@ def convert_chd_to_bincue(chd_file_path: pathlib.Path, output_cue_file_path: pat
     # Use another temporary directory for the chdman output files to keep those separate from the binmerge output files:
     with tempfile.TemporaryDirectory() as chdman_output_folder_path_name:
         chdman_cue_file_path = pathlib.Path(chdman_output_folder_path_name, output_cue_file_path.name)
+        logging.debug(f'Converting "{chd_file_path.name}" to .bin/.cue format')
         subprocess.run(["chdman", "extractcd", "--input", str(chd_file_path), "--output", str(chdman_cue_file_path)], check=True, stdout=stdout_option)
+        logging.debug(f'Splitting "{output_cue_file_path.name}" into separate tracks if necessary')
         subprocess.run(["binmerge", "--split", "-o", str(output_cue_file_path.parent), str(chdman_cue_file_path), chdman_cue_file_path.stem], check=True, stdout=stdout_option)
 
 
