@@ -2,7 +2,8 @@ import argparse
 import logging
 import pathlib
 
-from .verify import load_dat, verify_dumps
+from .verify import verify_dumps
+from .dat import load_dat
 
 
 def main():
