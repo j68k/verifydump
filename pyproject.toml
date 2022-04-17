@@ -17,7 +17,8 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-verifydump = 'verifydump.console:main'
+verifydump = 'verifydump.console:verifydump_main'
+convertdump = 'verifydump.console:convertdump_main'
 
 [tool.black]
 line-length = 1000000
