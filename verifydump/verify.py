@@ -21,11 +21,11 @@ class VerificationResult:
         self.cue_verified = cue_verified
 
 
-def verify_dump(dump_path: pathlib.Path, dat: Dat) -> Game:
+def verify_dump(dump_path: pathlib.Path, dat: Dat, show_command_output: bool) -> Game:
     logging.debug(f"Verifying dump file: {dump_path}")
     with tempfile.TemporaryDirectory() as bincue_folder_name:
         bincue_folder = pathlib.Path(bincue_folder_name)
-        cue_was_normalized = convert_dump_to_normalized_redump_bincue_folder(dump_path, bincue_folder, system=dat.system)
+        cue_was_normalized = convert_dump_to_normalized_redump_bincue_folder(dump_path, bincue_folder, system=dat.system, show_command_output=show_command_output)
         verification_result = verify_bincue_folder_dump(bincue_folder, dat=dat)
 
         if verification_result.cue_verified:
@@ -113,7 +113,7 @@ def verify_bincue_folder_dump(dump_folder: pathlib.Path, dat: Dat) -> Verificati
     return VerificationResult(game=game, cue_verified=cue_verified)
 
 
-def verify_dumps(dat: Dat, dump_file_or_folder_paths: typing.List[pathlib.Path]):
+def verify_dumps(dat: Dat, dump_file_or_folder_paths: typing.List[pathlib.Path], show_command_output: bool):
     for dump_file_or_folder_path in dump_file_or_folder_paths:
         if dump_file_or_folder_path.is_dir():
             for (dir_path, _, filenames) in os.walk(dump_file_or_folder_path, followlinks=True):
@@ -122,7 +122,7 @@ def verify_dumps(dat: Dat, dump_file_or_folder_paths: typing.List[pathlib.Path])
                         continue
 
                     full_path = pathlib.Path(dump_file_or_folder_path, dir_path, filename)
-                    verify_dump(full_path, dat=dat)
+                    verify_dump(full_path, dat=dat, show_command_output=show_command_output)
 
         else:
-            verify_dump(dump_file_or_folder_path, dat=dat)
+            verify_dump(dump_file_or_folder_path, dat=dat, show_command_output=show_command_output)

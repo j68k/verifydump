@@ -10,7 +10,7 @@ class ConversionException(Exception):
     pass
 
 
-def convert_dump_to_normalized_redump_bincue_folder(dump_file_path: pathlib.Path, bincue_folder: pathlib.Path, system: str) -> bool:
+def convert_dump_to_normalized_redump_bincue_folder(dump_file_path: pathlib.Path, bincue_folder: pathlib.Path, system: str, show_command_output: bool) -> bool:
     """
     Convert a dump file to .bin/.cue format in the specified folder and normalize the .cue file's format to match the Redump conventions for the given system if possible.
 
@@ -22,19 +22,21 @@ def convert_dump_to_normalized_redump_bincue_folder(dump_file_path: pathlib.Path
     dump_suffix_lower = dump_file_path.suffix.lower()
 
     if dump_suffix_lower == ".chd":
-        convert_chd_to_bincue(dump_file_path, cue_file_path)
+        convert_chd_to_bincue(dump_file_path, cue_file_path, show_command_output)
     else:
         raise ConversionException(f"{pathlib.Path(sys.argv[0]).stem} doesn't know how to handle '{dump_suffix_lower}' dumps")
 
     return normalize_redump_bincue_dump_for_system(cue_file_path, system)
 
 
-def convert_chd_to_bincue(chd_file_path: pathlib.Path, output_cue_file_path: pathlib.Path):
+def convert_chd_to_bincue(chd_file_path: pathlib.Path, output_cue_file_path: pathlib.Path, show_command_output: bool):
+    stdout_option = None if show_command_output else subprocess.DEVNULL
+
     # Use another temporary directory for the chdman output files to keep those separate from the binmerge output files:
     with tempfile.TemporaryDirectory() as chdman_output_folder_path_name:
         chdman_cue_file_path = pathlib.Path(chdman_output_folder_path_name, output_cue_file_path.name)
-        subprocess.run(["chdman", "extractcd", "--input", str(chd_file_path), "--output", str(chdman_cue_file_path)], check=True)
-        subprocess.run(["binmerge", "--split", "-o", str(output_cue_file_path.parent), str(chdman_cue_file_path), chdman_cue_file_path.stem], check=True)
+        subprocess.run(["chdman", "extractcd", "--input", str(chd_file_path), "--output", str(chdman_cue_file_path)], check=True, stdout=stdout_option)
+        subprocess.run(["binmerge", "--split", "-o", str(output_cue_file_path.parent), str(chdman_cue_file_path), chdman_cue_file_path.stem], check=True, stdout=stdout_option)
 
 
 def normalize_redump_bincue_dump_for_system(cue_file_path: pathlib.Path, system: str) -> bool:

@@ -11,6 +11,7 @@ from .dat import load_dat
 def arg_parser_with_common_args() -> argparse.ArgumentParser:
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--verbose", action=argparse.BooleanOptionalAction, default=False)
+    arg_parser.add_argument("--show-command-output", action=argparse.BooleanOptionalAction, default=False)
     return arg_parser
 
 
@@ -27,7 +28,7 @@ def verifydump_main():
     handle_common_args(args)
 
     dat = load_dat(pathlib.Path(args.dat_file))
-    verify_dumps(dat, [pathlib.Path(i) for i in args.dump_file_or_folder])
+    verify_dumps(dat, [pathlib.Path(i) for i in args.dump_file_or_folder], show_command_output=args.show_command_output)
 
 
 def convertdump_main():
@@ -42,6 +43,12 @@ def convertdump_main():
     handle_common_args(args)
 
     for dump_file_name in args.dump_file:
-        dump_cue_was_normalized = convert_dump_to_normalized_redump_bincue_folder(pathlib.Path(dump_file_name), pathlib.Path(args.output_folder), system=args.system)
+        dump_cue_was_normalized = convert_dump_to_normalized_redump_bincue_folder(
+            pathlib.Path(dump_file_name),
+            pathlib.Path(args.output_folder),
+            system=args.system,
+            show_command_output=args.show_command_output,
+        )
+
         if not dump_cue_was_normalized and args.system:
             logging.warning(f"The .cue file was not normalized to match Redump conventions because {tool_name} doesn't know how to do that for '{args.system}' dumps")
