@@ -35,7 +35,7 @@ def convertdump_main():
     tool_name = pathlib.Path(sys.argv[0]).stem
 
     arg_parser = arg_parser_with_common_args()
-    arg_parser.add_argument("--output_folder", default=".")
+    arg_parser.add_argument("--output-folder", default=".")
     arg_parser.add_argument("--system", default=None, help=f"The name of the system the dumps are for. If given, {tool_name} will normalize the .cue file that it outputs to match the Redump conventions for that system if possible. Use the full system name that is in the Redump Datfile's header <name> field, or use the short name for the system that appears in Redump web site URLs.")
     arg_parser.add_argument("dump_file", nargs="+")
     args = arg_parser.parse_args()
