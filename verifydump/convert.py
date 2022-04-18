@@ -1,6 +1,7 @@
 import logging
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -58,6 +59,16 @@ def normalize_redump_bincue_dump_for_system(cue_file_path: pathlib.Path, system:
         )
 
         cue_file_path.write_text(cue_file_path.read_text().replace(f'FILE "{original_bin_name}"', f'FILE "{single_track_bin_name}"'))
+
+    is_cue_iso_compatible = not has_multiple_tracks and re.match(r'^\s*FILE\s+"' + re.escape(f"{dump_name}.bin") + r'"\s*BINARY\s+TRACK 01 MODE1/2048\s+INDEX 01 00:00:00\s*$', cue_file_path.read_text())
+    if is_cue_iso_compatible:
+        logging.debug(f"'{cue_file_path.name}' is .iso compatible so converting dump to .iso and discarding .cue")
+
+        single_track_bin_path = pathlib.Path(dump_path, single_track_bin_name)
+        iso_file_path = pathlib.Path(dump_path, f"{dump_name}.iso")
+
+        single_track_bin_path.rename(iso_file_path)
+        cue_file_path.unlink()
 
     system_lower = system.lower() if system else system
 
