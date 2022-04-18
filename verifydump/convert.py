@@ -74,5 +74,7 @@ def normalize_redump_bincue_dump_for_system(cue_file_path: pathlib.Path, system:
 
     if system_lower in ("Sony - PlayStation".lower(), "psx"):
         return True
+    elif system_lower in ("Sony - PlayStation 2".lower(), "ps2"):
+        return True
     else:
         return False
