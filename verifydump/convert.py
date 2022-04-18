@@ -76,5 +76,9 @@ def normalize_redump_bincue_dump_for_system(cue_file_path: pathlib.Path, system:
         return True
     elif system_lower in ("Sony - PlayStation 2".lower(), "ps2"):
         return True
+    elif system_lower in ("Sega - Saturn".lower(), "ss"):
+        # About 70% of the Saturn .cue files have the "CATALOG 0000000000000" line. Unfortunately there doesn't seem to be a pattern for which files have it, but adding it will be correct more often than not.
+        cue_file_path.write_text(f"CATALOG 0000000000000\n{cue_file_path.read_text()}")
+        return True
     else:
         return False
