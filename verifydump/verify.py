@@ -29,12 +29,12 @@ def verify_dump(dump_path: pathlib.Path, dat: Dat, show_command_output: bool) ->
         verification_result = verify_bincue_folder_dump(bincue_folder, dat=dat)
 
         if verification_result.cue_verified:
-            logging.info(f'Game dump verified correct and complete: "{verification_result.game.name}"')
+            logging.info(f'Dump verified correct and complete: "{verification_result.game.name}"')
         else:
             if cue_was_normalized:
-                logging.warn(f'Game .bin files verified, but .cue does not match Datfile: "{verification_result.game.name}"')
+                logging.warn(f'Dump .bin files verified and complete, but .cue does not match Datfile: "{verification_result.game.name}"')
             else:
-                logging.warn(f'Game .bin files verified and .cue does not match Datfile, but {pathlib.Path(sys.argv[0]).stem} doesn\'t know how to process .cue files for this platform so that is expected: "{verification_result.game.name}"')
+                logging.warn(f'Dump .bin files verified and complete, and .cue does not match Datfile, but {pathlib.Path(sys.argv[0]).stem} doesn\'t know how to process .cue files for this platform so that is expected: "{verification_result.game.name}"')
 
         return verification_result.game
 

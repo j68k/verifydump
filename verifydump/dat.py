@@ -98,10 +98,10 @@ class FileLikeParserFeeder:
 
 
 def load_dat(dat_path: pathlib.Path) -> Dat:
-    logging.debug(f"Loading Dat file: {dat_path}")
+    logging.debug(f"Loading Datfile: {dat_path}")
     with open(dat_path, "rb") as dat_file:
         xml_parser = ElementTree.XMLParser(target=DatParser())
         shutil.copyfileobj(dat_file, FileLikeParserFeeder(xml_parser))
         dat = xml_parser.close()
-        logging.info(f"Dat loaded successfully with {len(dat.games)} games")
+        logging.info(f"Datfile loaded successfully with {len(dat.games)} games")
         return dat
