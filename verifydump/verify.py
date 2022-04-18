@@ -7,7 +7,7 @@ import sys
 import tempfile
 import typing
 
-from .convert import convert_dump_to_normalized_redump_bincue_folder
+from .convert import convert_dump_to_normalized_redump_dump_folder
 from .dat import Dat, Game
 
 
@@ -23,10 +23,10 @@ class VerificationResult:
 
 def verify_dump(dump_path: pathlib.Path, dat: Dat, show_command_output: bool) -> Game:
     logging.debug(f"Verifying dump file: {dump_path}")
-    with tempfile.TemporaryDirectory() as bincue_folder_name:
-        bincue_folder = pathlib.Path(bincue_folder_name)
-        cue_was_normalized = convert_dump_to_normalized_redump_bincue_folder(dump_path, bincue_folder, system=dat.system, show_command_output=show_command_output)
-        verification_result = verify_bincue_folder_dump(bincue_folder, dat=dat)
+    with tempfile.TemporaryDirectory() as redump_dump_folder_name:
+        redump_dump_folder = pathlib.Path(redump_dump_folder_name)
+        cue_was_normalized = convert_dump_to_normalized_redump_dump_folder(dump_path, redump_dump_folder, system=dat.system, show_command_output=show_command_output)
+        verification_result = verify_redump_dump_folder(redump_dump_folder, dat=dat)
 
         if verification_result.cue_verified:
             logging.info(f'Dump verified correct and complete: "{verification_result.game.name}"')
@@ -47,14 +47,14 @@ class FileLikeHashUpdater:
         self.hash.update(b)
 
 
-def verify_bincue_folder_dump(dump_folder: pathlib.Path, dat: Dat) -> VerificationResult:
+def verify_redump_dump_folder(dump_folder: pathlib.Path, dat: Dat) -> VerificationResult:
     verified_roms = []
 
-    cue_verified = False
+    cue_verified = True  # Not every dump will have a .cue so assume it's verified unless we do actually find one and it fails.
 
     for dump_file_path in dump_folder.iterdir():
         if not dump_file_path.is_file():
-            raise VerificationException(f"Unexpected non-file in BIN/CUE folder: {dump_file_path.name}")
+            raise VerificationException(f"Unexpected non-file in dump folder: {dump_file_path.name}")
 
         dump_file_is_cue = dump_file_path.suffix.lower() == ".cue"
 
@@ -96,7 +96,7 @@ def verify_bincue_folder_dump(dump_folder: pathlib.Path, dat: Dat) -> Verificati
         verified_roms.append(rom)
 
     if len(verified_roms) == 0:
-        raise VerificationException("No dump files found in BIN/CUE folder")
+        raise VerificationException("No game files found in dump folder")
 
     game = verified_roms[0].game
 

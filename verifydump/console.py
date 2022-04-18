@@ -3,7 +3,7 @@ import logging
 import pathlib
 import sys
 
-from .convert import convert_dump_to_normalized_redump_bincue_folder
+from .convert import convert_dump_to_normalized_redump_dump_folder
 from .verify import verify_dumps
 from .dat import load_dat
 
@@ -43,7 +43,7 @@ def convertdump_main():
     handle_common_args(args)
 
     for dump_file_name in args.dump_file:
-        dump_cue_was_normalized = convert_dump_to_normalized_redump_bincue_folder(
+        dump_cue_was_normalized = convert_dump_to_normalized_redump_dump_folder(
             pathlib.Path(dump_file_name),
             pathlib.Path(args.output_folder),
             system=args.system,

@@ -10,14 +10,14 @@ class ConversionException(Exception):
     pass
 
 
-def convert_dump_to_normalized_redump_bincue_folder(dump_file_path: pathlib.Path, bincue_folder: pathlib.Path, system: str, show_command_output: bool) -> bool:
+def convert_dump_to_normalized_redump_dump_folder(dump_file_path: pathlib.Path, redump_dump_folder: pathlib.Path, system: str, show_command_output: bool) -> bool:
     """
-    Convert a dump file to .bin/.cue format in the specified folder and normalize the .cue file's format to match the Redump conventions for the given system if possible.
+    Convert a dump file to Redump format in the specified folder, normalizing it to match the Redump conventions for the given system if applicable and possible.
 
-    Returns True if the .cue file was normalized, or False if we don't know how to normalize .cue files for the given system. If we do know how to normalize for the given system but normalization fails for some reason, then an exception will be raised.
+    Returns True if the dump was normalized, or False if we don't know how to normalize dumps for the given system. If we do know how to normalize for the given system but normalization fails for some reason, then an exception will be raised.
     """
 
-    cue_file_path = pathlib.Path(bincue_folder, dump_file_path.stem + ".cue")
+    cue_file_path = pathlib.Path(redump_dump_folder, dump_file_path.stem + ".cue")
 
     dump_suffix_lower = dump_file_path.suffix.lower()
 
