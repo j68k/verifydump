@@ -137,18 +137,20 @@ def verify_rvz(rvz_path: pathlib.Path, dat: Dat, show_command_output: bool) -> G
         raise VerificationException(f'Dump file "{rvz_path.name}" found in Dat, but it should be named {list_of_rom_names_that_match_sha1}')
 
     logging.info(f'Dump verified correct and complete: "{rom_with_matching_sha1_and_name.game.name}"')
+    return rom_with_matching_sha1_and_name.game
 
 
-def verify_dumps(dat: Dat, dump_file_or_folder_paths: typing.List[pathlib.Path], show_command_output: bool, allow_cue_mismatches: bool) -> list:
+def verify_dumps(dat: Dat, dump_file_or_folder_paths: typing.List[pathlib.Path], show_command_output: bool, allow_cue_mismatches: bool) -> tuple[list, list]:
+    verified_games = []
     errors = []
 
     def verify_dump_if_format_is_supported(dump_path: pathlib.Path, error_if_unsupported: bool):
         suffix_lower = dump_path.suffix.lower()
         try:
             if suffix_lower == ".chd":
-                verify_chd(dump_path, dat=dat, show_command_output=show_command_output, allow_cue_mismatches=allow_cue_mismatches)
+                verified_games.append(verify_chd(dump_path, dat=dat, show_command_output=show_command_output, allow_cue_mismatches=allow_cue_mismatches))
             elif suffix_lower == ".rvz":
-                verify_rvz(dump_path, dat=dat, show_command_output=show_command_output)
+                verified_games.append(verify_rvz(dump_path, dat=dat, show_command_output=show_command_output))
             elif error_if_unsupported:
                 raise VerificationException(f"{pathlib.Path(sys.argv[0]).stem} doesn't know how to handle '{suffix_lower}' dumps")
         except VerificationException as e:
@@ -166,4 +168,4 @@ def verify_dumps(dat: Dat, dump_file_or_folder_paths: typing.List[pathlib.Path],
         else:
             verify_dump_if_format_is_supported(dump_file_or_folder_path, error_if_unsupported=True)
 
-    return errors
+    return (verified_games, errors)
