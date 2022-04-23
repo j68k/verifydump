@@ -21,6 +21,7 @@ def handle_common_args(args):
 
 def verifydump_main():
     arg_parser = arg_parser_with_common_args()
+    arg_parser.add_argument("--allow-cue-file-mismatches", action=argparse.BooleanOptionalAction, default=False)
     arg_parser.add_argument("dat_file")
     arg_parser.add_argument("dump_file_or_folder", nargs="+")
     args = arg_parser.parse_args()
@@ -36,7 +37,7 @@ def verifydump_main():
         print(f"Error reading Datfile: {e}")
         sys.exit(1)
 
-    errors = verify_dumps(dat, [pathlib.Path(i) for i in args.dump_file_or_folder], show_command_output=args.show_command_output)
+    errors = verify_dumps(dat, [pathlib.Path(i) for i in args.dump_file_or_folder], show_command_output=args.show_command_output, allow_cue_mismatches=args.allow_cue_file_mismatches)
 
     for error in errors:
         if isinstance(error, ConversionException):

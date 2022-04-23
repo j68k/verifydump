@@ -21,7 +21,7 @@ class VerificationResult:
         self.cue_verified = cue_verified
 
 
-def verify_chd(chd_path: pathlib.Path, dat: Dat, show_command_output: bool) -> Game:
+def verify_chd(chd_path: pathlib.Path, dat: Dat, show_command_output: bool, allow_cue_mismatches: bool) -> Game:
     logging.debug(f"Verifying dump file: {chd_path}")
     with tempfile.TemporaryDirectory() as redump_dump_folder_name:
         redump_dump_folder = pathlib.Path(redump_dump_folder_name)
@@ -32,9 +32,14 @@ def verify_chd(chd_path: pathlib.Path, dat: Dat, show_command_output: bool) -> G
             logging.info(f'Dump verified correct and complete: "{verification_result.game.name}"')
         else:
             if cue_was_normalized:
-                logging.warn(f'Dump .bin files verified and complete, but .cue does not match Datfile: "{verification_result.game.name}"')
+                message = f'"{verification_result.game.name}" .bin files verified and complete, but .cue does not match Datfile'
             else:
-                logging.warn(f'Dump .bin files verified and complete, and .cue does not match Datfile, but {pathlib.Path(sys.argv[0]).stem} doesn\'t know how to process .cue files for this platform so that is expected: "{verification_result.game.name}"')
+                message = f'"{verification_result.game.name}" .bin files verified and complete, and .cue does not match Datfile, but {pathlib.Path(sys.argv[0]).stem} doesn\'t know how to process .cue files for this platform so that is expected'
+
+            if allow_cue_mismatches:
+                logging.warn(message)
+            else:
+                raise VerificationException(message)
 
         return verification_result.game
 
@@ -134,14 +139,14 @@ def verify_rvz(rvz_path: pathlib.Path, dat: Dat, show_command_output: bool) -> G
     logging.info(f'Dump verified correct and complete: "{rom_with_matching_sha1_and_name.game.name}"')
 
 
-def verify_dumps(dat: Dat, dump_file_or_folder_paths: typing.List[pathlib.Path], show_command_output: bool) -> list:
+def verify_dumps(dat: Dat, dump_file_or_folder_paths: typing.List[pathlib.Path], show_command_output: bool, allow_cue_mismatches: bool) -> list:
     errors = []
 
     def verify_dump_if_format_is_supported(dump_path: pathlib.Path, error_if_unsupported: bool):
         suffix_lower = dump_path.suffix.lower()
         try:
             if suffix_lower == ".chd":
-                verify_chd(dump_path, dat=dat, show_command_output=show_command_output)
+                verify_chd(dump_path, dat=dat, show_command_output=show_command_output, allow_cue_mismatches=allow_cue_mismatches)
             elif suffix_lower == ".rvz":
                 verify_rvz(dump_path, dat=dat, show_command_output=show_command_output)
             elif error_if_unsupported:
