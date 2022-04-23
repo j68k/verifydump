@@ -31,8 +31,13 @@ def convert_chd_to_bincue(chd_file_path: pathlib.Path, output_cue_file_path: pat
     # Use another temporary directory for the chdman output files to keep those separate from the binmerge output files:
     with tempfile.TemporaryDirectory() as chdman_output_folder_path_name:
         chdman_cue_file_path = pathlib.Path(chdman_output_folder_path_name, output_cue_file_path.name)
+
         logging.debug(f'Converting "{chd_file_path.name}" to .bin/.cue format')
-        subprocess.run(["chdman", "extractcd", "--input", str(chd_file_path), "--output", str(chdman_cue_file_path)], check=True, stdout=stdout_option)
+        chdman_result = subprocess.run(["chdman", "extractcd", "--input", str(chd_file_path), "--output", str(chdman_cue_file_path)], stdout=stdout_option)
+        if chdman_result.returncode != 0:
+            # chdman provides useful progress output on stderr so we don't want to capture stderr when running it. That means we can't provide actual error output to the exception, but I can't find a way around that.
+            raise ConversionException(f"Failed to convert .chd using chdman", chd_file_path, None)
+
         logging.debug(f'Splitting "{output_cue_file_path.name}" into separate tracks if necessary')
         subprocess.run(["binmerge", "--split", "-o", str(output_cue_file_path.parent), str(chdman_cue_file_path), chdman_cue_file_path.stem], check=True, stdout=stdout_option)
 
