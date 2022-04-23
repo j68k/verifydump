@@ -74,3 +74,15 @@ def normalize_redump_bincue_dump_for_system(cue_file_path: pathlib.Path, system:
         return True
     else:
         return False
+
+
+def get_sha1hex_for_rvz(rvz_path):
+    with tempfile.TemporaryDirectory() as dolphin_tool_user_folder_name:
+        sha1hex = subprocess.run(
+            ["DolphinTool", "verify", "-u", dolphin_tool_user_folder_name, "-i", str(rvz_path), "--algorithm=sha1"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+    return sha1hex

@@ -3,12 +3,11 @@ import logging
 import os
 import pathlib
 import shutil
-import subprocess
 import sys
 import tempfile
 import typing
 
-from .convert import convert_chd_to_normalized_redump_dump_folder
+from .convert import convert_chd_to_normalized_redump_dump_folder, get_sha1hex_for_rvz
 from .dat import Dat, Game
 
 
@@ -115,13 +114,7 @@ def verify_redump_dump_folder(dump_folder: pathlib.Path, dat: Dat) -> Verificati
 
 
 def verify_rvz(rvz_path: pathlib.Path, dat: Dat, show_command_output: bool) -> Game:
-    with tempfile.TemporaryDirectory() as dolphin_tool_user_folder_name:
-        sha1hex = subprocess.run(
-            ["DolphinTool", "verify", "-u", dolphin_tool_user_folder_name, "-i", str(rvz_path), "--algorithm=sha1"],
-            check=True,
-            capture_output=True,
-            text=True,
-        ).stdout.strip()
+    sha1hex = get_sha1hex_for_rvz(rvz_path)
 
     roms_with_matching_sha1 = dat.roms_by_sha1hex.get(sha1hex)
 
