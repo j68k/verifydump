@@ -5,7 +5,7 @@ import sys
 
 from .convert import ConversionException, convert_chd_to_normalized_redump_dump_folder
 from .verify import VerificationException, verify_dumps
-from .dat import load_dat
+from .dat import DatParsingException, load_dat
 
 
 def arg_parser_with_common_args() -> argparse.ArgumentParser:
@@ -27,7 +27,15 @@ def verifydump_main():
 
     handle_common_args(args)
 
-    dat = load_dat(pathlib.Path(args.dat_file))
+    try:
+        dat = load_dat(pathlib.Path(args.dat_file))
+    except DatParsingException as e:
+        print(f"Error when parsing Datfile: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error reading Datfile: {e}")
+        sys.exit(1)
+
     errors = verify_dumps(dat, [pathlib.Path(i) for i in args.dump_file_or_folder], show_command_output=args.show_command_output)
 
     for error in errors:
