@@ -7,7 +7,10 @@ import tempfile
 
 
 class ConversionException(Exception):
-    pass
+    def __init__(self, message: str, converted_file_path: pathlib.Path, tool_output: str):
+        super().__init__(message)
+        self.converted_file_path = converted_file_path
+        self.tool_output = tool_output
 
 
 def convert_chd_to_normalized_redump_dump_folder(chd_path: pathlib.Path, redump_dump_folder: pathlib.Path, system: str, show_command_output: bool) -> bool:
@@ -76,13 +79,18 @@ def normalize_redump_bincue_dump_for_system(cue_file_path: pathlib.Path, system:
         return False
 
 
-def get_sha1hex_for_rvz(rvz_path):
+def get_sha1hex_for_rvz(rvz_path, show_command_output: bool) -> str:
     with tempfile.TemporaryDirectory() as dolphin_tool_user_folder_name:
-        sha1hex = subprocess.run(
+        dolphintool_result = subprocess.run(
             ["DolphinTool", "verify", "-u", dolphin_tool_user_folder_name, "-i", str(rvz_path), "--algorithm=sha1"],
-            check=True,
             capture_output=True,
             text=True,
-        ).stdout.strip()
+        )
 
-    return sha1hex
+    if show_command_output:
+        print(dolphintool_result.stderr, end="")
+
+    if dolphintool_result.returncode != 0:
+        raise ConversionException("Failed to find SHA-1 using DolphinTool", rvz_path, dolphintool_result.stderr)
+
+    return dolphintool_result.stdout.strip()

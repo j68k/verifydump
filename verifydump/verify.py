@@ -114,7 +114,9 @@ def verify_redump_dump_folder(dump_folder: pathlib.Path, dat: Dat) -> Verificati
 
 
 def verify_rvz(rvz_path: pathlib.Path, dat: Dat, show_command_output: bool) -> Game:
-    sha1hex = get_sha1hex_for_rvz(rvz_path)
+    logging.debug(f"Verifying dump file: {rvz_path}")
+
+    sha1hex = get_sha1hex_for_rvz(rvz_path, show_command_output=show_command_output)
 
     roms_with_matching_sha1 = dat.roms_by_sha1hex.get(sha1hex)
 
