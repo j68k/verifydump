@@ -3,8 +3,8 @@ import logging
 import pathlib
 import sys
 
-from .convert import convert_chd_to_normalized_redump_dump_folder
-from .verify import verify_dumps
+from .convert import ConversionException, convert_chd_to_normalized_redump_dump_folder
+from .verify import VerificationException, verify_dumps
 from .dat import load_dat
 
 
@@ -28,7 +28,19 @@ def verifydump_main():
     handle_common_args(args)
 
     dat = load_dat(pathlib.Path(args.dat_file))
-    verify_dumps(dat, [pathlib.Path(i) for i in args.dump_file_or_folder], show_command_output=args.show_command_output)
+    errors = verify_dumps(dat, [pathlib.Path(i) for i in args.dump_file_or_folder], show_command_output=args.show_command_output)
+
+    for error in errors:
+        if isinstance(error, ConversionException):
+            print(f'Failed to process "{error.converted_file_path}" to verify it: {error}', file=sys.stderr)
+            if error.tool_output:
+                print(error.tool_output, end="", file=sys.stderr)
+        elif isinstance(error, VerificationException):
+            print(error, file=sys.stderr)
+        else:
+            raise error  # wut?
+
+    sys.exit(1 if len(errors) > 0 else 0)
 
 
 def convertdump_main():

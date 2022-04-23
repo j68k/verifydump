@@ -7,7 +7,7 @@ import sys
 import tempfile
 import typing
 
-from .convert import convert_chd_to_normalized_redump_dump_folder, get_sha1hex_for_rvz
+from .convert import ConversionException, convert_chd_to_normalized_redump_dump_folder, get_sha1hex_for_rvz
 from .dat import Dat, Game
 
 
@@ -134,15 +134,22 @@ def verify_rvz(rvz_path: pathlib.Path, dat: Dat, show_command_output: bool) -> G
     logging.info(f'Dump verified correct and complete: "{rom_with_matching_sha1_and_name.game.name}"')
 
 
-def verify_dumps(dat: Dat, dump_file_or_folder_paths: typing.List[pathlib.Path], show_command_output: bool):
+def verify_dumps(dat: Dat, dump_file_or_folder_paths: typing.List[pathlib.Path], show_command_output: bool) -> list:
+    errors = []
+
     def verify_dump_if_format_is_supported(dump_path: pathlib.Path, error_if_unsupported: bool):
         suffix_lower = dump_path.suffix.lower()
-        if suffix_lower == ".chd":
-            verify_chd(dump_path, dat=dat, show_command_output=show_command_output)
-        elif suffix_lower == ".rvz":
-            verify_rvz(dump_path, dat=dat, show_command_output=show_command_output)
-        elif error_if_unsupported:
-            raise VerificationException(f"{pathlib.Path(sys.argv[0]).stem} doesn't know how to handle '{suffix_lower}' dumps")
+        try:
+            if suffix_lower == ".chd":
+                verify_chd(dump_path, dat=dat, show_command_output=show_command_output)
+            elif suffix_lower == ".rvz":
+                verify_rvz(dump_path, dat=dat, show_command_output=show_command_output)
+            elif error_if_unsupported:
+                raise VerificationException(f"{pathlib.Path(sys.argv[0]).stem} doesn't know how to handle '{suffix_lower}' dumps")
+        except VerificationException as e:
+            errors.append(e)
+        except ConversionException as e:
+            errors.append(e)
 
     for dump_file_or_folder_path in dump_file_or_folder_paths:
         if dump_file_or_folder_path.is_dir():
@@ -153,3 +160,5 @@ def verify_dumps(dat: Dat, dump_file_or_folder_paths: typing.List[pathlib.Path],
 
         else:
             verify_dump_if_format_is_supported(dump_file_or_folder_path, error_if_unsupported=True)
+
+    return errors
