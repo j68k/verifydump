@@ -3,6 +3,7 @@ import logging
 import os
 import pathlib
 import shutil
+import subprocess
 import sys
 import tempfile
 import typing
@@ -113,11 +114,38 @@ def verify_redump_dump_folder(dump_folder: pathlib.Path, dat: Dat) -> Verificati
     return VerificationResult(game=game, cue_verified=cue_verified)
 
 
+def verify_rvz(rvz_path: pathlib.Path, dat: Dat, show_command_output: bool) -> Game:
+    with tempfile.TemporaryDirectory() as dolphin_tool_user_folder_name:
+        sha1hex = subprocess.run(
+            ["DolphinTool", "verify", "-u", dolphin_tool_user_folder_name, "-i", str(rvz_path), "--algorithm=sha1"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+    roms_with_matching_sha1 = dat.roms_by_sha1hex.get(sha1hex)
+
+    if not roms_with_matching_sha1:
+        raise VerificationException(f'SHA-1 of uncompressed version of "{rvz_path}" doesn\'t match any file in the Dat')
+
+    expected_rom_name = rvz_path.with_suffix(".iso").name
+
+    rom_with_matching_sha1_and_name = next((rom for rom in roms_with_matching_sha1 if rom.name == expected_rom_name), None)
+
+    if not rom_with_matching_sha1_and_name:
+        list_of_rom_names_that_match_sha1 = " or ".join([f'"{rom.name.replace(".iso", ".rvz")}"' for rom in roms_with_matching_sha1])
+        raise VerificationException(f'Dump file "{rvz_path.name}" found in Dat, but it should be named {list_of_rom_names_that_match_sha1}')
+
+    logging.info(f'Dump verified correct and complete: "{rom_with_matching_sha1_and_name.game.name}"')
+
+
 def verify_dumps(dat: Dat, dump_file_or_folder_paths: typing.List[pathlib.Path], show_command_output: bool):
     def verify_dump_if_format_is_supported(dump_path: pathlib.Path, error_if_unsupported: bool):
         suffix_lower = dump_path.suffix.lower()
         if suffix_lower == ".chd":
             verify_chd(dump_path, dat=dat, show_command_output=show_command_output)
+        elif suffix_lower == ".rvz":
+            verify_rvz(dump_path, dat=dat, show_command_output=show_command_output)
         elif error_if_unsupported:
             raise VerificationException(f"{pathlib.Path(sys.argv[0]).stem} doesn't know how to handle '{suffix_lower}' dumps")
 
