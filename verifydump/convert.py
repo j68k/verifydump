@@ -3,7 +3,6 @@ import os
 import pathlib
 import re
 import subprocess
-import sys
 import tempfile
 
 
@@ -11,22 +10,15 @@ class ConversionException(Exception):
     pass
 
 
-def convert_dump_to_normalized_redump_dump_folder(dump_file_path: pathlib.Path, redump_dump_folder: pathlib.Path, system: str, show_command_output: bool) -> bool:
+def convert_chd_to_normalized_redump_dump_folder(chd_path: pathlib.Path, redump_dump_folder: pathlib.Path, system: str, show_command_output: bool) -> bool:
     """
     Convert a dump file to Redump format in the specified folder, normalizing it to match the Redump conventions for the given system if applicable and possible.
 
     Returns True if the dump was normalized, or False if we don't know how to normalize dumps for the given system. If we do know how to normalize for the given system but normalization fails for some reason, then an exception will be raised.
     """
 
-    cue_file_path = pathlib.Path(redump_dump_folder, dump_file_path.stem + ".cue")
-
-    dump_suffix_lower = dump_file_path.suffix.lower()
-
-    if dump_suffix_lower == ".chd":
-        convert_chd_to_bincue(dump_file_path, cue_file_path, show_command_output)
-    else:
-        raise ConversionException(f"{pathlib.Path(sys.argv[0]).stem} doesn't know how to handle '{dump_suffix_lower}' dumps")
-
+    cue_file_path = pathlib.Path(redump_dump_folder, chd_path.stem + ".cue")
+    convert_chd_to_bincue(chd_path, cue_file_path, show_command_output)
     return normalize_redump_bincue_dump_for_system(cue_file_path, system)
 
 

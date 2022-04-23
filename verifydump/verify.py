@@ -7,7 +7,7 @@ import sys
 import tempfile
 import typing
 
-from .convert import convert_dump_to_normalized_redump_dump_folder
+from .convert import convert_chd_to_normalized_redump_dump_folder
 from .dat import Dat, Game
 
 
@@ -21,11 +21,11 @@ class VerificationResult:
         self.cue_verified = cue_verified
 
 
-def verify_dump(dump_path: pathlib.Path, dat: Dat, show_command_output: bool) -> Game:
-    logging.debug(f"Verifying dump file: {dump_path}")
+def verify_chd(chd_path: pathlib.Path, dat: Dat, show_command_output: bool) -> Game:
+    logging.debug(f"Verifying dump file: {chd_path}")
     with tempfile.TemporaryDirectory() as redump_dump_folder_name:
         redump_dump_folder = pathlib.Path(redump_dump_folder_name)
-        cue_was_normalized = convert_dump_to_normalized_redump_dump_folder(dump_path, redump_dump_folder, system=dat.system, show_command_output=show_command_output)
+        cue_was_normalized = convert_chd_to_normalized_redump_dump_folder(chd_path, redump_dump_folder, system=dat.system, show_command_output=show_command_output)
         verification_result = verify_redump_dump_folder(redump_dump_folder, dat=dat)
 
         if verification_result.cue_verified:
@@ -114,15 +114,19 @@ def verify_redump_dump_folder(dump_folder: pathlib.Path, dat: Dat) -> Verificati
 
 
 def verify_dumps(dat: Dat, dump_file_or_folder_paths: typing.List[pathlib.Path], show_command_output: bool):
+    def verify_dump_if_format_is_supported(dump_path: pathlib.Path, error_if_unsupported: bool):
+        suffix_lower = dump_path.suffix.lower()
+        if suffix_lower == ".chd":
+            verify_chd(dump_path, dat=dat, show_command_output=show_command_output)
+        elif error_if_unsupported:
+            raise VerificationException(f"{pathlib.Path(sys.argv[0]).stem} doesn't know how to handle '{suffix_lower}' dumps")
+
     for dump_file_or_folder_path in dump_file_or_folder_paths:
         if dump_file_or_folder_path.is_dir():
             for (dir_path, _, filenames) in os.walk(dump_file_or_folder_path, followlinks=True):
                 for filename in filenames:
-                    if not filename.lower().endswith(".chd"):
-                        continue
-
                     full_path = pathlib.Path(dump_file_or_folder_path, dir_path, filename)
-                    verify_dump(full_path, dat=dat, show_command_output=show_command_output)
+                    verify_dump_if_format_is_supported(full_path, error_if_unsupported=False)
 
         else:
-            verify_dump(dump_file_or_folder_path, dat=dat, show_command_output=show_command_output)
+            verify_dump_if_format_is_supported(dump_file_or_folder_path, error_if_unsupported=True)
