@@ -22,8 +22,8 @@ def handle_common_args(args):
 def verifydump_main():
     arg_parser = arg_parser_with_common_args()
     arg_parser.add_argument("--allow-cue-file-mismatches", action=argparse.BooleanOptionalAction, default=False)
-    arg_parser.add_argument("--extra-cue-source")
-    arg_parser.add_argument("dat_file")
+    arg_parser.add_argument("--extra-cue-source", metavar="FILE_FOLDER_OR_ZIP")
+    arg_parser.add_argument("dat_file", metavar="dat_file_or_zip")
     arg_parser.add_argument("dump_file_or_folder", nargs="+")
     args = arg_parser.parse_args()
 
