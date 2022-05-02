@@ -22,7 +22,7 @@ class VerificationResult:
 
 
 def verify_chd(chd_path: pathlib.Path, dat: Dat, show_command_output: bool, allow_cue_mismatches: bool, extra_cue_source: pathlib.Path) -> Game:
-    logging.debug(f"Verifying dump file: {chd_path}")
+    logging.debug(f'Verifying dump file "{chd_path}"')
     with tempfile.TemporaryDirectory() as redump_dump_folder_name:
         redump_dump_folder = pathlib.Path(redump_dump_folder_name)
         (cue_was_normalized, cue_was_replaced) = convert_chd_to_normalized_redump_dump_folder(chd_path, redump_dump_folder, system=dat.system, show_command_output=show_command_output, extra_cue_source=extra_cue_source)
@@ -125,7 +125,7 @@ def verify_redump_dump_folder(dump_folder: pathlib.Path, dat: Dat) -> Verificati
 
 
 def verify_rvz(rvz_path: pathlib.Path, dat: Dat, show_command_output: bool) -> Game:
-    logging.debug(f"Verifying dump file: {rvz_path}")
+    logging.debug(f'Verifying dump file "{rvz_path}"')
 
     sha1hex = get_sha1hex_for_rvz(rvz_path, show_command_output=show_command_output)
 
@@ -158,7 +158,7 @@ def verify_dumps(dat: Dat, dump_file_or_folder_paths: typing.List[pathlib.Path],
             elif suffix_lower == ".rvz":
                 verified_games.append(verify_rvz(dump_path, dat=dat, show_command_output=show_command_output))
             elif error_if_unsupported:
-                raise VerificationException(f"{pathlib.Path(sys.argv[0]).stem} doesn't know how to handle '{suffix_lower}' dumps")
+                raise VerificationException(f'{pathlib.Path(sys.argv[0]).stem} doesn\'t know how to handle "{suffix_lower}" dumps')
         except VerificationException as e:
             errors.append(e)
         except ConversionException as e:

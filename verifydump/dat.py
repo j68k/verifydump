@@ -116,6 +116,6 @@ def load_dat(dat_path: pathlib.Path) -> Dat:
                     return parse_dat_file(dat_file)
         raise DatParsingException("No .dat file found within provided .zip")
     else:
-        logging.debug(f"Loading Datfile: {dat_path}")
+        logging.debug(f'Loading Datfile "{dat_path}"')
         with open(dat_path, "rb") as dat_file:
             return parse_dat_file(dat_file)
