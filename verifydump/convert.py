@@ -13,16 +13,18 @@ class ConversionException(Exception):
         self.tool_output = tool_output
 
 
-def convert_chd_to_normalized_redump_dump_folder(chd_path: pathlib.Path, redump_dump_folder: pathlib.Path, system: str, show_command_output: bool) -> bool:
+def convert_chd_to_normalized_redump_dump_folder(chd_path: pathlib.Path, redump_dump_folder: pathlib.Path, system: str, show_command_output: bool, extra_cue_source: pathlib.Path) -> bool:
     """
     Convert a dump file to Redump format in the specified folder, normalizing it to match the Redump conventions for the given system if applicable and possible.
 
-    Returns True if the dump was normalized, or False if we don't know how to normalize dumps for the given system. If we do know how to normalize for the given system but normalization fails for some reason, then an exception will be raised.
+    Returns a tuple `(dump_was_normalized, cue_file_was_replaced)`. `dump_was_normalized` is True if the dump was normalized, or False if we don't know how to normalize dumps for the given system. If we do know how to normalize for the given system but normalization fails for some reason, then an exception will be raised. `cue_file_was_replaced` is True if the .cue file that we attempted to create from the .chd was replaced with one from `extra_cue_source`. `cue_file_was_replaced` is False if the dump was converted to another format (e.g. .iso) that doesn't use a .cue file, if no .cue file for this dump was found in the `extra_cue_source`, or if the .cue file that we generated already matched the one provided in the `extra_cue_source`.
     """
 
     cue_file_path = pathlib.Path(redump_dump_folder, chd_path.stem + ".cue")
     convert_chd_to_bincue(chd_path, cue_file_path, show_command_output)
-    return normalize_redump_bincue_dump_for_system(cue_file_path, system)
+    dump_was_normalized = normalize_redump_bincue_dump_for_system(cue_file_path, system)
+    cue_file_was_replaced = replace_cue_file_if_replacement_exists_and_does_not_match(cue_file_path, extra_cue_source=extra_cue_source)
+    return (dump_was_normalized, cue_file_was_replaced)
 
 
 def convert_chd_to_bincue(chd_file_path: pathlib.Path, output_cue_file_path: pathlib.Path, show_command_output: bool):
@@ -84,6 +86,34 @@ def normalize_redump_bincue_dump_for_system(cue_file_path: pathlib.Path, system:
         return True
     else:
         return False
+
+
+def replace_cue_file_if_replacement_exists_and_does_not_match(cue_file_path: pathlib.Path, extra_cue_source: pathlib.Path) -> bool:
+    if not extra_cue_source:
+        return False
+
+    if extra_cue_source.is_dir():
+        extra_cue_file_path = pathlib.Path(extra_cue_source, cue_file_path.name)
+        return replace_cue_file_if_replacement_exists_and_does_not_match(cue_file_path=cue_file_path, extra_cue_source=extra_cue_file_path)
+
+    extra_cue_file_path = extra_cue_source
+
+    if not extra_cue_file_path.exists():
+        return False
+
+    extra_cue_file_bytes = extra_cue_file_path.read_bytes()
+
+    if not cue_file_path.exists():
+        cue_file_path.write_bytes(extra_cue_file_bytes)
+        return True
+
+    cue_file_bytes = cue_file_path.read_bytes()
+
+    if cue_file_bytes != extra_cue_file_bytes:
+        cue_file_path.write_bytes(extra_cue_file_bytes)
+        return True
+
+    return False
 
 
 def get_sha1hex_for_rvz(rvz_path, show_command_output: bool) -> str:

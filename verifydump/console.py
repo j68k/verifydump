@@ -22,6 +22,7 @@ def handle_common_args(args):
 def verifydump_main():
     arg_parser = arg_parser_with_common_args()
     arg_parser.add_argument("--allow-cue-file-mismatches", action=argparse.BooleanOptionalAction, default=False)
+    arg_parser.add_argument("--extra-cue-source")
     arg_parser.add_argument("dat_file")
     arg_parser.add_argument("dump_file_or_folder", nargs="+")
     args = arg_parser.parse_args()
@@ -37,7 +38,7 @@ def verifydump_main():
         print(f"Error reading Datfile: {e}")
         sys.exit(1)
 
-    (verified_games, errors) = verify_dumps(dat, [pathlib.Path(i) for i in args.dump_file_or_folder], show_command_output=args.show_command_output, allow_cue_mismatches=args.allow_cue_file_mismatches)
+    (verified_games, errors) = verify_dumps(dat, [pathlib.Path(i) for i in args.dump_file_or_folder], show_command_output=args.show_command_output, allow_cue_mismatches=args.allow_cue_file_mismatches, extra_cue_source=pathlib.Path(args.extra_cue_source) if args.extra_cue_source else None)
 
     if len(verified_games) > 1:
         print(f"Successfully verified {len(verified_games)} dumps")

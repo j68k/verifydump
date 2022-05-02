@@ -21,16 +21,22 @@ class VerificationResult:
         self.cue_verified = cue_verified
 
 
-def verify_chd(chd_path: pathlib.Path, dat: Dat, show_command_output: bool, allow_cue_mismatches: bool) -> Game:
+def verify_chd(chd_path: pathlib.Path, dat: Dat, show_command_output: bool, allow_cue_mismatches: bool, extra_cue_source: pathlib.Path) -> Game:
     logging.debug(f"Verifying dump file: {chd_path}")
     with tempfile.TemporaryDirectory() as redump_dump_folder_name:
         redump_dump_folder = pathlib.Path(redump_dump_folder_name)
-        cue_was_normalized = convert_chd_to_normalized_redump_dump_folder(chd_path, redump_dump_folder, system=dat.system, show_command_output=show_command_output)
+        (cue_was_normalized, cue_was_replaced) = convert_chd_to_normalized_redump_dump_folder(chd_path, redump_dump_folder, system=dat.system, show_command_output=show_command_output, extra_cue_source=extra_cue_source)
         verification_result = verify_redump_dump_folder(redump_dump_folder, dat=dat)
 
         if verification_result.cue_verified:
-            logging.info(f'Dump verified correct and complete: "{verification_result.game.name}"')
+            if cue_was_replaced:
+                logging.info(f'Dump verified correct and complete using provided .cue: "{verification_result.game.name}"')
+            else:
+                logging.info(f'Dump verified correct and complete: "{verification_result.game.name}"')
         else:
+            if cue_was_replaced:
+                raise VerificationException(f'"{verification_result.game.name}" .bin files verified and complete, but provided .cue does not match Datfile')
+
             if cue_was_normalized:
                 message = f'"{verification_result.game.name}" .bin files verified and complete, but .cue does not match Datfile'
             else:
@@ -140,7 +146,7 @@ def verify_rvz(rvz_path: pathlib.Path, dat: Dat, show_command_output: bool) -> G
     return rom_with_matching_sha1_and_name.game
 
 
-def verify_dumps(dat: Dat, dump_file_or_folder_paths: typing.List[pathlib.Path], show_command_output: bool, allow_cue_mismatches: bool) -> tuple[list, list]:
+def verify_dumps(dat: Dat, dump_file_or_folder_paths: typing.List[pathlib.Path], show_command_output: bool, allow_cue_mismatches: bool, extra_cue_source: pathlib.Path) -> tuple[list, list]:
     verified_games = []
     errors = []
 
@@ -148,7 +154,7 @@ def verify_dumps(dat: Dat, dump_file_or_folder_paths: typing.List[pathlib.Path],
         suffix_lower = dump_path.suffix.lower()
         try:
             if suffix_lower == ".chd":
-                verified_games.append(verify_chd(dump_path, dat=dat, show_command_output=show_command_output, allow_cue_mismatches=allow_cue_mismatches))
+                verified_games.append(verify_chd(dump_path, dat=dat, show_command_output=show_command_output, allow_cue_mismatches=allow_cue_mismatches, extra_cue_source=extra_cue_source))
             elif suffix_lower == ".rvz":
                 verified_games.append(verify_rvz(dump_path, dat=dat, show_command_output=show_command_output))
             elif error_if_unsupported:
