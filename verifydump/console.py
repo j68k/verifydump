@@ -12,6 +12,7 @@ def arg_parser_with_common_args() -> argparse.ArgumentParser:
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--verbose", action=argparse.BooleanOptionalAction, default=False)
     arg_parser.add_argument("--show-command-output", action=argparse.BooleanOptionalAction, default=False)
+    arg_parser.add_argument("--extra-cue-source", metavar="FILE_FOLDER_OR_ZIP")
     return arg_parser
 
 
@@ -22,7 +23,6 @@ def handle_common_args(args):
 def verifydump_main():
     arg_parser = arg_parser_with_common_args()
     arg_parser.add_argument("--allow-cue-file-mismatches", action=argparse.BooleanOptionalAction, default=False)
-    arg_parser.add_argument("--extra-cue-source", metavar="FILE_FOLDER_OR_ZIP")
     arg_parser.add_argument("dat_file", metavar="dat_file_or_zip")
     arg_parser.add_argument("dump_file_or_folder", nargs="+")
     args = arg_parser.parse_args()
@@ -71,11 +71,12 @@ def convertdump_main():
     handle_common_args(args)
 
     for dump_file_name in args.dump_file:
-        dump_cue_was_normalized = convert_chd_to_normalized_redump_dump_folder(
+        (dump_cue_was_normalized, cue_file_was_replaced) = convert_chd_to_normalized_redump_dump_folder(
             pathlib.Path(dump_file_name),
             pathlib.Path(args.output_folder),
             system=args.system,
             show_command_output=args.show_command_output,
+            extra_cue_source=pathlib.Path(args.extra_cue_source) if args.extra_cue_source else None,
         )
 
         if not dump_cue_was_normalized and args.system:
