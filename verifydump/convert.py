@@ -39,7 +39,7 @@ def convert_chd_to_bincue(chd_file_path: pathlib.Path, output_cue_file_path: pat
             # chdman provides useful progress output on stderr so we don't want to capture stderr when running it. That means we can't provide actual error output to the exception, but I can't find a way around that.
             raise ConversionException("Failed to convert .chd using chdman", chd_file_path, None)
 
-        logging.debug(f'Splitting "{output_cue_file_path.name}" into separate tracks if necessary')
+        logging.debug(f'Splitting "{output_cue_file_path.name}" to use separate tracks if necessary')
         binmerge_result = subprocess.run(["binmerge", "--split", "-o", str(output_cue_file_path.parent), str(chdman_cue_file_path), chdman_cue_file_path.stem], capture_output=True, text=True)
         if show_command_output:
             print(binmerge_result.stdout, end="")
