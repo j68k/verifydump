@@ -4,6 +4,7 @@ import pathlib
 import re
 import subprocess
 import tempfile
+import zipfile
 
 
 class ConversionException(Exception):
@@ -99,20 +100,35 @@ def replace_cue_file_if_replacement_exists_and_does_not_match(cue_file_path: pat
     extra_cue_file_path = extra_cue_source
 
     if not extra_cue_file_path.exists():
+        logging.debug(f'No replacement for "{cue_file_path.name}" found in extra .cue source')
         return False
 
-    extra_cue_file_bytes = extra_cue_file_path.read_bytes()
+    if extra_cue_file_path.suffix.lower() == ".zip":
+        with zipfile.ZipFile(extra_cue_file_path) as zip:
+            try:
+                zip_member_info = zip.getinfo(cue_file_path.name)
+            except KeyError:
+                logging.debug(f'No replacement for "{cue_file_path.name}" found in extra .cue zip')
+                return False
+
+            with zip.open(zip_member_info) as zip_member:
+                extra_cue_file_bytes = zip_member.read()
+    else:
+        extra_cue_file_bytes = extra_cue_file_path.read_bytes()
 
     if not cue_file_path.exists():
+        logging.debug(f'Using replacement for "{cue_file_path.name}" because we didn\'t generate a .cue file')
         cue_file_path.write_bytes(extra_cue_file_bytes)
         return True
 
     cue_file_bytes = cue_file_path.read_bytes()
 
     if cue_file_bytes != extra_cue_file_bytes:
+        logging.debug(f'Using replacement for "{cue_file_path.name}" because generated file doesn\'t match the provided one')
         cue_file_path.write_bytes(extra_cue_file_bytes)
         return True
 
+    logging.debug(f'Not replacing "{cue_file_path.name}" with provided file because it matches already')
     return False
 
 
