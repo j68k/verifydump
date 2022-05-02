@@ -2,6 +2,7 @@ import logging
 import pathlib
 import shutil
 from xml.etree import ElementTree
+import zipfile
 
 
 class Dat:
@@ -98,10 +99,23 @@ class FileLikeParserFeeder:
 
 
 def load_dat(dat_path: pathlib.Path) -> Dat:
-    logging.debug(f"Loading Datfile: {dat_path}")
-    with open(dat_path, "rb") as dat_file:
+    def parse_dat_file(dat_file) -> Dat:
         xml_parser = ElementTree.XMLParser(target=DatParser())
         shutil.copyfileobj(dat_file, FileLikeParserFeeder(xml_parser))
         dat = xml_parser.close()
         logging.info(f"Datfile loaded successfully with {len(dat.games)} games")
         return dat
+
+    if dat_path.suffix.lower() == ".zip":
+        with zipfile.ZipFile(dat_path) as zip:
+            for zip_member_info in zip.infolist():
+                if not zip_member_info.filename.lower().endswith(".dat"):
+                    continue
+                logging.debug(f'Loading Datfile "{zip_member_info.filename}" from "{dat_path}"')
+                with zip.open(zip_member_info) as dat_file:
+                    return parse_dat_file(dat_file)
+        raise DatParsingException("No .dat file found within provided .zip")
+    else:
+        logging.debug(f"Loading Datfile: {dat_path}")
+        with open(dat_path, "rb") as dat_file:
+            return parse_dat_file(dat_file)
