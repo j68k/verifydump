@@ -27,8 +27,11 @@ def verify_chd(chd_path: pathlib.Path, dat: Dat, show_command_output: bool, allo
         redump_dump_folder = pathlib.Path(redump_dump_folder_name)
         (cue_was_normalized, cue_was_replaced) = convert_chd_to_normalized_redump_dump_folder(chd_path, redump_dump_folder, system=dat.system, show_command_output=show_command_output, extra_cue_source=extra_cue_source)
         verification_result = verify_redump_dump_folder(redump_dump_folder, dat=dat)
+        game_has_cue = any(game_rom.name.lower().endswith(".cue") for game_rom in verification_result.game.roms)
 
-        if verification_result.cue_verified:
+        if not game_has_cue:
+            logging.info(f'Dump verified correct and complete: "{verification_result.game.name}"')
+        elif verification_result.cue_verified:
             if cue_was_replaced:
                 logging.info(f'Dump verified correct and complete using provided .cue: "{verification_result.game.name}"')
             else:
@@ -40,11 +43,12 @@ def verify_chd(chd_path: pathlib.Path, dat: Dat, show_command_output: bool, allo
             if cue_was_normalized:
                 message = f'"{verification_result.game.name}" .bin files verified and complete, but .cue does not match Datfile'
             else:
-                message = f'"{verification_result.game.name}" .bin files verified and complete, and .cue does not match Datfile, but {pathlib.Path(sys.argv[0]).stem} doesn\'t know how to process .cue files for this platform so that is expected'
+                message = f'"{verification_result.game.name}" .bin files verified and complete, and .cue does not match Datfile, but {pathlib.Path(sys.argv[0]).stem} doesn\'t know how to process .cue files for this system so that is expected'
 
             if allow_cue_mismatches:
                 logging.warn(message)
             else:
+                message += "\nYou can either supply the original .cue file yourself using the '--extra-cue-source' option, or ignore .cue file errors with the '--allow-cue-file-mismatches' option"
                 raise VerificationException(message)
 
         return verification_result.game
@@ -61,7 +65,7 @@ class FileLikeHashUpdater:
 def verify_redump_dump_folder(dump_folder: pathlib.Path, dat: Dat) -> VerificationResult:
     verified_roms = []
 
-    cue_verified = True  # Not every dump will have a .cue so assume it's verified unless we do actually find one and it fails.
+    cue_verified = False
 
     for dump_file_path in dump_folder.iterdir():
         if not dump_file_path.is_file():
