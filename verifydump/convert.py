@@ -4,7 +4,6 @@ import pathlib
 import re
 import subprocess
 import tempfile
-import zipfile
 
 
 class ConversionException(Exception):
@@ -14,11 +13,9 @@ class ConversionException(Exception):
         self.tool_output = tool_output
 
 
-def convert_chd_to_normalized_redump_dump_folder(chd_path: pathlib.Path, redump_dump_folder: pathlib.Path, system: str, show_command_output: bool, extra_cue_source: pathlib.Path) -> bool:
+def convert_chd_to_normalized_redump_dump_folder(chd_path: pathlib.Path, redump_dump_folder: pathlib.Path, system: str, show_command_output: bool):
     """
-    Convert a dump file to Redump format in the specified folder, normalizing it to match the Redump conventions for the given system if applicable and possible.
-
-    Returns a tuple `(dump_was_normalized, cue_file_was_replaced)`. `dump_was_normalized` is True if the dump was normalized, or False if we don't know how to normalize dumps for the given system. If we do know how to normalize for the given system but normalization fails for some reason, then an exception will be raised. `cue_file_was_replaced` is True if the .cue file that we attempted to create from the .chd was replaced with one from `extra_cue_source`. `cue_file_was_replaced` is False if the dump was converted to another format (e.g. .iso) that doesn't use a .cue file, if no .cue file for this dump was found in the `extra_cue_source`, or if the .cue file that we generated already matched the one provided in the `extra_cue_source`.
+    Convert a dump file to Redump format in the specified folder.
     """
 
     cue_file_path = pathlib.Path(redump_dump_folder, chd_path.stem + ".cue")
@@ -27,13 +24,10 @@ def convert_chd_to_normalized_redump_dump_folder(chd_path: pathlib.Path, redump_
         # These systems use GD-ROM media, which needs special handling. chdman does support GD-ROM dumps, but it only supports converting them to and from .gdi format and not to and from .cue format (it will attempt the conversion to or from .cue format, but the results will not be correct). The Redump Datfiles use .cue format, but we can still use chdman to get the correct .bin files by telling it to convert to .gdi format, because the .bin files are the same for .gdi and .cue format dumps.
         convert_chd_to_bin_gdi(chd_path, cue_file_path.parent, show_command_output)
         # We could then convert the .gdi file to the .cue format that Redump's Datfiles refer to. That would be somewhat involved, though, and I don't think it's worth the effort when users can easily supply the original Redump .cue if they want to, so we actually just discard the .gdi file. We do rename the .bin files to match the Redump conventions, though:
-        dump_was_normalized = normalize_redump_bin_gdi_dump(cue_file_path)
+        normalize_redump_bin_gdi_dump(cue_file_path)
     else:
         convert_chd_to_bincue(chd_path, cue_file_path, show_command_output)
-        dump_was_normalized = normalize_redump_bincue_dump_for_system(cue_file_path, system)
-
-    cue_file_was_replaced = replace_cue_file_if_replacement_exists_and_does_not_match(cue_file_path, extra_cue_source=extra_cue_source)
-    return (dump_was_normalized, cue_file_was_replaced)
+        normalize_redump_bincue_dump(cue_file_path)
 
 
 def convert_chd_to_bincue(chd_file_path: pathlib.Path, output_cue_file_path: pathlib.Path, show_command_output: bool):
@@ -55,7 +49,7 @@ def convert_chd_to_bincue(chd_file_path: pathlib.Path, output_cue_file_path: pat
             raise ConversionException("Failed to split .bin into separate tracks using binmerge", chd_file_path, binmerge_result.stdout)
 
 
-def normalize_redump_bincue_dump_for_system(cue_file_path: pathlib.Path, system: str) -> bool:
+def normalize_redump_bincue_dump(cue_file_path: pathlib.Path):
     dump_path = cue_file_path.parent
     dump_name = cue_file_path.stem
 
@@ -83,19 +77,6 @@ def normalize_redump_bincue_dump_for_system(cue_file_path: pathlib.Path, system:
         single_track_bin_path.rename(iso_file_path)
         cue_file_path.unlink()
 
-    system_lower = system.lower() if system else system
-
-    if system_lower in ("Sony - PlayStation".lower(), "psx"):
-        return True
-    elif system_lower in ("Sony - PlayStation 2".lower(), "ps2"):
-        return True
-    elif system_lower in ("Sega - Saturn".lower(), "ss"):
-        # About 70% of the Saturn .cue files have the "CATALOG 0000000000000" line. Unfortunately there doesn't seem to be a pattern for which files have it, but adding it will be correct more often than not.
-        cue_file_path.write_text(f"CATALOG 0000000000000\n{cue_file_path.read_text()}")
-        return True
-    else:
-        return False
-
 
 def convert_chd_to_bin_gdi(chd_file_path: pathlib.Path, output_folder_path: pathlib.Path, show_command_output: bool):
     logging.debug(f'Converting "{chd_file_path.name}" to .bin/.gdi format')
@@ -106,7 +87,7 @@ def convert_chd_to_bin_gdi(chd_file_path: pathlib.Path, output_folder_path: path
         raise ConversionException("Failed to convert .chd to .bin/.gdi using chdman", chd_file_path, None)
 
 
-def normalize_redump_bin_gdi_dump(cue_file_path: pathlib.Path) -> bool:
+def normalize_redump_bin_gdi_dump(cue_file_path: pathlib.Path):
     gdi_file_path = cue_file_path.with_suffix(".gdi")
     gdi_file_path.unlink()
 
@@ -125,51 +106,6 @@ def normalize_redump_bin_gdi_dump(cue_file_path: pathlib.Path) -> bool:
         track_number = int(track_number_parser_result.group("track_number"))
         redump_bin_filename = redump_bin_filename_format.format(track_number=track_number)
         original_bin_or_raw_file_path.rename(original_bin_or_raw_file_path.with_name(redump_bin_filename))
-
-    return False  # We aren't even attempting to recreate the .cue file.
-
-
-def replace_cue_file_if_replacement_exists_and_does_not_match(cue_file_path: pathlib.Path, extra_cue_source: pathlib.Path) -> bool:
-    if not extra_cue_source:
-        return False
-
-    if extra_cue_source.is_dir():
-        extra_cue_file_path = pathlib.Path(extra_cue_source, cue_file_path.name)
-        return replace_cue_file_if_replacement_exists_and_does_not_match(cue_file_path=cue_file_path, extra_cue_source=extra_cue_file_path)
-
-    extra_cue_file_path = extra_cue_source
-
-    if not extra_cue_file_path.exists():
-        logging.debug(f'No replacement for "{cue_file_path.name}" found in extra .cue source')
-        return False
-
-    if extra_cue_file_path.suffix.lower() == ".zip":
-        with zipfile.ZipFile(extra_cue_file_path) as zip:
-            try:
-                zip_member_info = zip.getinfo(cue_file_path.name)
-            except KeyError:
-                logging.debug(f'No replacement for "{cue_file_path.name}" found in extra .cue zip')
-                return False
-
-            with zip.open(zip_member_info) as zip_member:
-                extra_cue_file_bytes = zip_member.read()
-    else:
-        extra_cue_file_bytes = extra_cue_file_path.read_bytes()
-
-    if not cue_file_path.exists():
-        logging.debug(f'Using replacement for "{cue_file_path.name}" because we didn\'t generate a .cue file')
-        cue_file_path.write_bytes(extra_cue_file_bytes)
-        return True
-
-    cue_file_bytes = cue_file_path.read_bytes()
-
-    if cue_file_bytes != extra_cue_file_bytes:
-        logging.debug(f'Using replacement for "{cue_file_path.name}" because generated file doesn\'t match the provided one')
-        cue_file_path.write_bytes(extra_cue_file_bytes)
-        return True
-
-    logging.debug(f'Not replacing "{cue_file_path.name}" with provided file because it matches already')
-    return False
 
 
 def get_sha1hex_for_rvz(rvz_path, show_command_output: bool) -> str:

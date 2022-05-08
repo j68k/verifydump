@@ -1,3 +1,4 @@
+import enum
 import hashlib
 import logging
 import os
@@ -6,6 +7,7 @@ import shutil
 import sys
 import tempfile
 import typing
+import zipfile
 
 from .convert import ConversionException, convert_chd_to_normalized_redump_dump_folder, get_sha1hex_for_rvz
 from .dat import Dat, Game
@@ -15,41 +17,50 @@ class VerificationException(Exception):
     pass
 
 
+@enum.unique
+class CueVerificationResult(enum.Enum):
+    NO_CUE_NEEDED = enum.auto()
+    GENERATED_CUE_VERIFIED_EXACTLY = enum.auto()
+    GENERATED_CUE_MATCHES_ESSENTIALS_FROM_EXTRA_CUE = enum.auto()
+    GENERATED_CUE_MISMATCH_WITH_NO_EXTRA_CUE_PROVIDED = enum.auto()
+    GENERATED_CUE_DOES_NOT_MATCH_ESSENTIALS_FROM_EXTRA_CUE = enum.auto()
+
+
 class VerificationResult:
-    def __init__(self, game: Game, cue_verified: bool):
+    def __init__(self, game: Game, cue_verification_result: CueVerificationResult):
         self.game = game
-        self.cue_verified = cue_verified
+        self.cue_verification_result = cue_verification_result
 
 
 def verify_chd(chd_path: pathlib.Path, dat: Dat, show_command_output: bool, allow_cue_mismatches: bool, extra_cue_source: pathlib.Path) -> Game:
     logging.debug(f'Verifying dump file "{chd_path}"')
     with tempfile.TemporaryDirectory() as redump_dump_folder_name:
         redump_dump_folder = pathlib.Path(redump_dump_folder_name)
-        (cue_was_normalized, cue_was_replaced) = convert_chd_to_normalized_redump_dump_folder(chd_path, redump_dump_folder, system=dat.system, show_command_output=show_command_output, extra_cue_source=extra_cue_source)
-        verification_result = verify_redump_dump_folder(redump_dump_folder, dat=dat)
-        game_has_cue = any(game_rom.name.lower().endswith(".cue") for game_rom in verification_result.game.roms)
+        convert_chd_to_normalized_redump_dump_folder(chd_path, redump_dump_folder, system=dat.system, show_command_output=show_command_output)
+        verification_result = verify_redump_dump_folder(redump_dump_folder, dat=dat, extra_cue_source=extra_cue_source)
 
-        if not game_has_cue:
+        if verification_result.cue_verification_result in (CueVerificationResult.NO_CUE_NEEDED, CueVerificationResult.GENERATED_CUE_VERIFIED_EXACTLY):
             logging.info(f'Dump verified correct and complete: "{verification_result.game.name}"')
-        elif verification_result.cue_verified:
-            if cue_was_replaced:
-                logging.info(f'Dump verified correct and complete using provided .cue: "{verification_result.game.name}"')
-            else:
-                logging.info(f'Dump verified correct and complete: "{verification_result.game.name}"')
-        else:
-            if cue_was_replaced:
-                raise VerificationException(f'"{verification_result.game.name}" .bin files verified and complete, but provided .cue does not match Datfile')
-
-            if cue_was_normalized:
-                message = f'"{verification_result.game.name}" .bin files verified and complete, but .cue does not match Datfile'
-            else:
-                message = f'"{verification_result.game.name}" .bin files verified and complete, and .cue does not match Datfile, but {pathlib.Path(sys.argv[0]).stem} doesn\'t know how to process .cue files for this system so that is expected'
+        elif verification_result.cue_verification_result == CueVerificationResult.GENERATED_CUE_MATCHES_ESSENTIALS_FROM_EXTRA_CUE:
+            logging.info(f'Dump .bin files verified correct and complete, and .cue essential structure matches: "{verification_result.game.name}"')
+        elif verification_result.cue_verification_result == CueVerificationResult.GENERATED_CUE_MISMATCH_WITH_NO_EXTRA_CUE_PROVIDED:
+            message = f'"{verification_result.game.name}" .bin files verified and complete, but .cue does not match Datfile'
 
             if allow_cue_mismatches:
                 logging.warn(message)
             else:
-                message += "\nYou can either supply the original .cue file yourself using the '--extra-cue-source' option, or ignore .cue file errors with the '--allow-cue-file-mismatches' option"
+                message += "\nYou can either supply the original .cue file yourself using the '--extra-cue-source' option so that we can check that the essential .cue structure is correct, or ignore .cue file errors with the '--allow-cue-file-mismatches' option"
                 raise VerificationException(message)
+        elif verification_result.cue_verification_result == CueVerificationResult.GENERATED_CUE_DOES_NOT_MATCH_ESSENTIALS_FROM_EXTRA_CUE:
+            message = f'"{verification_result.game.name}" .bin files verified and complete, but .cue does not match Datfile or essential structure from extra .cue source'
+
+            if allow_cue_mismatches:
+                logging.warn(message)
+            else:
+                message += f"\nThis may be an error in the file, a limitation in the .chd file format, or a bug or limitation in {pathlib.Path(sys.argv[0]).stem}. You can ignore .cue file errors with the '--allow-cue-file-mismatches' option"
+                raise VerificationException(message)
+        else:
+            raise Exception(f"Unhandled CueVerificationResult value: {verification_result.cue_verification_result}")
 
         return verification_result.game
 
@@ -62,7 +73,7 @@ class FileLikeHashUpdater:
         self.hash.update(b)
 
 
-def verify_redump_dump_folder(dump_folder: pathlib.Path, dat: Dat) -> VerificationResult:
+def verify_redump_dump_folder(dump_folder: pathlib.Path, dat: Dat, extra_cue_source: pathlib.Path) -> VerificationResult:
     verified_roms = []
 
     cue_verified = False
@@ -125,7 +136,49 @@ def verify_redump_dump_folder(dump_folder: pathlib.Path, dat: Dat) -> Verificati
             # This shouldn't be possible because of the logic above where we check that all files are from the same game, but it feels like it's worth keeping this as a sanity check.
             raise VerificationException(f'Dump has extra file "{verified_rom.name}" that isn\'t associated with the game "{game.name}" in the Dat')
 
-    return VerificationResult(game=game, cue_verified=cue_verified)
+    if cue_verified:
+        return VerificationResult(game=game, cue_verification_result=CueVerificationResult.GENERATED_CUE_VERIFIED_EXACTLY)
+
+    game_cue_rom = next((game_rom for game_rom in game.roms if game_rom.name.lower().endswith(".cue")), None)
+    if game_cue_rom is None:
+        return VerificationResult(game=game, cue_verification_result=CueVerificationResult.NO_CUE_NEEDED)
+
+    if not extra_cue_source:
+        return VerificationResult(game=game, cue_verification_result=CueVerificationResult.GENERATED_CUE_MISMATCH_WITH_NO_EXTRA_CUE_PROVIDED)
+
+    if extra_cue_source.is_dir():
+        extra_cue_file_path = pathlib.Path(extra_cue_source, game_cue_rom.name)
+        if not extra_cue_file_path.exists():
+            # This is subtley different from the file-existence check we do below that raises an exception. Here it's reasonable for the user to provide a folder of extra .cue files that doesn't include a .cue for this particular game:
+            logging.debug(f'"{game_cue_rom.name}" doesn\'t match Datfile, and no matching file was found in the extra .cue folder to compare it with')
+            return VerificationResult(game=game, cue_verification_result=CueVerificationResult.GENERATED_CUE_MISMATCH_WITH_NO_EXTRA_CUE_PROVIDED)
+    else:
+        extra_cue_file_path = extra_cue_source
+
+    if not extra_cue_file_path.exists():
+        raise VerificationException(f'Extra .cue file source "{extra_cue_file_path}" doesn\'t exist')
+
+    if extra_cue_file_path.suffix.lower() == ".zip":
+        with zipfile.ZipFile(extra_cue_file_path) as zip:
+            try:
+                zip_member_info = zip.getinfo(game_cue_rom.name)
+            except KeyError:
+                logging.debug(f'"{game_cue_rom.name}" doesn\'t match Datfile, and no matching file was found in the extra .cue zip to compare it with')
+                return VerificationResult(game=game, cue_verification_result=CueVerificationResult.GENERATED_CUE_MISMATCH_WITH_NO_EXTRA_CUE_PROVIDED)
+
+            with zip.open(zip_member_info) as zip_member:
+                extra_cue_bytes = zip_member.read()
+    else:
+        extra_cue_bytes = extra_cue_file_path.read_bytes()
+
+    extra_cue_sha1hex = hashlib.sha1(extra_cue_bytes).hexdigest()
+
+    if extra_cue_sha1hex != game_cue_rom.sha1hex:
+        raise VerificationException(f'Provided extra .cue file "{game_cue_rom.name}" doesn\'t match Datfile')
+
+    # FIXME Compare the converted .cue with provided .cue stripped of its metadata and other non-structural elements and return `CueVerificationResult.GENERATED_CUE_MATCHES_ESSENTIALS_FROM_EXTRA_CUE` if that is successful.
+
+    return VerificationResult(game=game, cue_verification_result=CueVerificationResult.GENERATED_CUE_DOES_NOT_MATCH_ESSENTIALS_FROM_EXTRA_CUE)
 
 
 def verify_rvz(rvz_path: pathlib.Path, dat: Dat, show_command_output: bool) -> Game:
