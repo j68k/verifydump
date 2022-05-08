@@ -12,7 +12,7 @@ def arg_parser_with_common_args() -> argparse.ArgumentParser:
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--verbose", action=argparse.BooleanOptionalAction, default=False)
     arg_parser.add_argument("--show-command-output", action=argparse.BooleanOptionalAction, default=False)
-    arg_parser.add_argument("--extra-cue-source", metavar="FILE_FOLDER_OR_ZIP")
+    arg_parser.add_argument("--extra-cue-source", metavar="FILE_OR_FOLDER_OR_ZIP")
     return arg_parser
 
 
