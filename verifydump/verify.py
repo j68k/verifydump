@@ -49,7 +49,7 @@ def verify_chd(chd_path: pathlib.Path, dat: Dat, show_command_output: bool, allo
             if allow_cue_mismatches:
                 logging.warn(message)
             else:
-                message += "\nYou can either supply the original .cue file yourself using the '--extra-cue-source' option so that we can check that the essential .cue structure is correct, or ignore .cue file errors with the '--allow-cue-file-mismatches' option"
+                message += "\nYou can either supply the original .cue file yourself using the '--extra-cue-source' option so that we can check that the generated .cue file's essential structure is correct, or ignore .cue file errors with the '--allow-cue-file-mismatches' option"
                 raise VerificationException(message)
         elif verification_result.cue_verification_result == CueVerificationResult.GENERATED_CUE_DOES_NOT_MATCH_ESSENTIALS_FROM_EXTRA_CUE:
             message = f'"{verification_result.game.name}" .bin files verified and complete, but .cue does not match Datfile or essential structure from extra .cue source'
@@ -57,7 +57,7 @@ def verify_chd(chd_path: pathlib.Path, dat: Dat, show_command_output: bool, allo
             if allow_cue_mismatches:
                 logging.warn(message)
             else:
-                message += f"\nThis may be an error in the file, a limitation in the .chd file format, or a bug or limitation in {pathlib.Path(sys.argv[0]).stem}. You can ignore .cue file errors with the '--allow-cue-file-mismatches' option"
+                message += f"\nYou can choose to ignore .cue file errors with the '--allow-cue-file-mismatches' option"
                 raise VerificationException(message)
         else:
             raise Exception(f"Unhandled CueVerificationResult value: {verification_result.cue_verification_result}")
@@ -71,6 +71,16 @@ class FileLikeHashUpdater:
 
     def write(self, b):
         self.hash.update(b)
+
+
+# These are simply all the commands that are used in chdman's .cue file writing code:
+CHDMAN_SUPPORTED_CUE_COMMANDS = frozenset(("FILE", "TRACK", "PREGAP", "INDEX", "POSTGAP"))
+
+
+def strip_insignificant_whitespace_and_chdman_unsupported_commands_from_cue(cue_text: str) -> str:
+    stripped_cue_lines = (line.strip() for line in cue_text.splitlines())
+    supported_cue_lines = (line for line in stripped_cue_lines if line.split(" ", 1)[0].upper() in CHDMAN_SUPPORTED_CUE_COMMANDS)
+    return "\n".join(supported_cue_lines)
 
 
 def verify_redump_dump_folder(dump_folder: pathlib.Path, dat: Dat, extra_cue_source: pathlib.Path) -> VerificationResult:
@@ -176,8 +186,24 @@ def verify_redump_dump_folder(dump_folder: pathlib.Path, dat: Dat, extra_cue_sou
     if extra_cue_sha1hex != game_cue_rom.sha1hex:
         raise VerificationException(f'Provided extra .cue file "{game_cue_rom.name}" doesn\'t match Datfile')
 
-    # FIXME Compare the converted .cue with provided .cue stripped of its metadata and other non-structural elements and return `CueVerificationResult.GENERATED_CUE_MATCHES_ESSENTIALS_FROM_EXTRA_CUE` if that is successful.
+    with open(pathlib.Path(dump_folder, game_cue_rom.name), "rb") as dump_cue_file:
+        dump_cue_bytes = dump_cue_file.read()
 
+    EXPECTED_CUE_ENCODING = "UTF-8"
+    try:
+        dump_cue_text = dump_cue_bytes.decode(EXPECTED_CUE_ENCODING)
+    except UnicodeError:
+        raise VerificationException(f'Failed to decode generated .cue file "{game_cue_rom.name}" as {EXPECTED_CUE_ENCODING}')
+    try:
+        extra_cue_text = extra_cue_bytes.decode(EXPECTED_CUE_ENCODING)
+    except UnicodeError:
+        raise VerificationException(f'Failed to decode provided .cue file "{game_cue_rom.name}" as {EXPECTED_CUE_ENCODING}')
+
+    if strip_insignificant_whitespace_and_chdman_unsupported_commands_from_cue(dump_cue_text) == strip_insignificant_whitespace_and_chdman_unsupported_commands_from_cue(extra_cue_text):
+        logging.debug(f'Dump file "{game_cue_rom.name}" matches essential parts of provided extra .cue file, and extra .cue file matches the Datfile')
+        return VerificationResult(game=game, cue_verification_result=CueVerificationResult.GENERATED_CUE_MATCHES_ESSENTIALS_FROM_EXTRA_CUE)
+
+    logging.debug(f'Dump file "{game_cue_rom.name}" does not match essential parts of provided extra .cue file, but extra .cue file does match the Datfile')
     return VerificationResult(game=game, cue_verification_result=CueVerificationResult.GENERATED_CUE_DOES_NOT_MATCH_ESSENTIALS_FROM_EXTRA_CUE)
 
 
