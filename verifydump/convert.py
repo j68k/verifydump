@@ -150,7 +150,22 @@ def convert_gdi_to_cue(gdi_file_path: pathlib.Path, cue_file_path: pathlib.Path,
 
             cue_file.write(f'FILE "{redump_bin_filename_format.format(track_number=track_number)}" BINARY\n')
             cue_file.write(f"  TRACK {track_number:02d} {cue_track_mode}\n")
-            # FIXME Write INDEX lines.
+            if cue_track_mode == "AUDIO":
+                cue_file.write("    INDEX 00 00:00:00\n")
+                cue_file.write("    INDEX 01 00:02:00\n")
+            else:
+                # The last track of the disc has
+                if track_number == 1 or track_number == 3:
+                    # It's the first track of the single-density or high-density area.
+                    cue_file.write("    INDEX 01 00:00:00\n")
+                elif track_number == len(gdi_track_lines):
+                    # It's the last track on the disc.
+                    cue_file.write("    INDEX 00 00:00:00\n")
+                    cue_file.write("    INDEX 00 00:03:00\n")
+                else:
+                    # I think this is correct, but haven't verified it with an actual example (and I'm not even certain if there are allowed to be multiple data tracks in an area on GD-ROM discs).
+                    cue_file.write("    INDEX 00 00:00:00\n")
+                    cue_file.write("    INDEX 01 00:02:00\n")
 
 
 def get_sha1hex_for_rvz(rvz_path, show_command_output: bool) -> str:
