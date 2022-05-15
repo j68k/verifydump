@@ -7,7 +7,7 @@ import tempfile
 
 
 class ConversionException(Exception):
-    def __init__(self, message: str, converted_file_path: pathlib.Path, tool_output: str):
+    def __init__(self, message: str, converted_file_path: pathlib.Path, tool_output: str = None):
         super().__init__(message)
         self.converted_file_path = converted_file_path
         self.tool_output = tool_output
@@ -113,19 +113,29 @@ def normalize_redump_bin_gdi_dump(cue_file_path: pathlib.Path):
 def convert_gdi_to_cue(gdi_file_path: pathlib.Path, cue_file_path: pathlib.Path, redump_bin_filename_format: str):
     gdi_track_lines = gdi_file_path.read_text().splitlines()[1:]  # The first line in the file is just the total number of tracks.
 
-    gdi_line_pattern = re.compile(r"^\s*(?P<track_number>[0-9]+)\s+(?P<frame_offset>[0-9]+)\s+(?P<gdi_track_mode>[0-9]+)\s+(?P<sector_size>[0-9]+)\s+(?P<track_filename>\".*?\")\s+(?P<disc_offset>[0-9]+)$")
+    gdi_line_pattern = re.compile(r"^\s*(?P<track_number>[0-9]+)\s+(?P<lba>[0-9]+)\s+(?P<gdi_track_mode>[0-9]+)\s+(?P<sector_size>[0-9]+)\s+(?P<track_filename>\".*?\")\s+(?P<disc_offset>[0-9]+)$")
 
     with open(cue_file_path, "wt", encoding="utf-8", newline="\r\n") as cue_file:
-        # FIXME Write "REM SINGLE-DENSITY AREA" and "REM HIGH-DENSITY AREA" lines.
-
         for gdi_track_line in gdi_track_lines:
             gdi_track_match = gdi_line_pattern.match(gdi_track_line)
 
             if gdi_track_match is None:
-                raise ConversionException(f"Line in .gdi file didn't match expected format: {gdi_track_line}", gdi_file_path, tool_output="")
+                raise ConversionException(f"Line in .gdi file didn't match expected format: {gdi_track_line}", gdi_file_path)
 
+            track_number = int(gdi_track_match.group("track_number"))
+            lba = int(gdi_track_match.group("lba"))
             gdi_track_mode = int(gdi_track_match.group("gdi_track_mode"))
             sector_size = int(gdi_track_match.group("sector_size"))
+
+            if track_number == 1:
+                if lba != 0:
+                    raise ConversionException(f"Unexpected LBA of first track: {lba}", gdi_file_path)
+                cue_file.write("REM SINGLE-DENSITY AREA\n")
+
+            if track_number == 3:
+                if lba != 45000:
+                    raise ConversionException(f"Unexpected LBA of track 3: {lba}", gdi_file_path)
+                cue_file.write("REM HIGH-DENSITY AREA\n")
 
             if gdi_track_mode == 0:
                 cue_track_mode = "AUDIO"
@@ -136,9 +146,7 @@ def convert_gdi_to_cue(gdi_file_path: pathlib.Path, cue_file_path: pathlib.Path,
                 else:
                     cue_track_mode = f"MODE 2/{sector_size:04d}"
             else:
-                raise ConversionException(f"Unexpected .gdi track mode: {gdi_track_mode}", gdi_file_path, tool_output="")
-
-            track_number = int(gdi_track_match.group("track_number"))
+                raise ConversionException(f"Unexpected .gdi track mode: {gdi_track_mode}", gdi_file_path)
 
             cue_file.write(f'FILE "{redump_bin_filename_format.format(track_number=track_number)}" BINARY\n')
             cue_file.write(f"  TRACK {track_number:02d} {cue_track_mode}\n")
