@@ -3,7 +3,7 @@ import logging
 import pathlib
 import sys
 
-from .convert import ConversionException, convert_chd_to_normalized_redump_dump_folder
+from .convert import ConversionException, convert_chd_to_normalized_redump_dump_folder, convert_gdi_to_cue
 from .verify import VerificationException, verify_dumps
 from .dat import DatParsingException, load_dat
 
@@ -81,3 +81,14 @@ def convertdump_main():
             show_command_output=args.show_command_output,
             extra_cue_source=pathlib.Path(args.extra_cue_source) if args.extra_cue_source else None,
         )
+
+
+def convertgditocue_main():
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("gdi_file")
+    arg_parser.add_argument("cue_file")
+    args = arg_parser.parse_args()
+
+    logging.basicConfig(format="%(message)s", level=logging.DEBUG)
+    cue_file_path = pathlib.Path(args.cue_file)
+    convert_gdi_to_cue(gdi_file_path=pathlib.Path(args.gdi_file), cue_file_path=cue_file_path, redump_bin_filename_format=cue_file_path.stem + " (Track {track_number:02d}).bin")

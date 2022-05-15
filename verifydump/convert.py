@@ -88,9 +88,6 @@ def convert_chd_to_bin_gdi(chd_file_path: pathlib.Path, output_folder_path: path
 
 
 def normalize_redump_bin_gdi_dump(cue_file_path: pathlib.Path):
-    gdi_file_path = cue_file_path.with_suffix(".gdi")
-    gdi_file_path.unlink()
-
     game_name = cue_file_path.stem
 
     bin_and_raw_file_paths = list(cue_file_path.parent.glob(f"{game_name}*.bin")) + list(cue_file_path.parent.glob(f"{game_name}*.raw"))
@@ -106,6 +103,46 @@ def normalize_redump_bin_gdi_dump(cue_file_path: pathlib.Path):
         track_number = int(track_number_parser_result.group("track_number"))
         redump_bin_filename = redump_bin_filename_format.format(track_number=track_number)
         original_bin_or_raw_file_path.rename(original_bin_or_raw_file_path.with_name(redump_bin_filename))
+
+    # The Datfile includes .cue files rather than .gdi files so convert our .gdi into a .cue:
+    gdi_file_path = cue_file_path.with_suffix(".gdi")
+    convert_gdi_to_cue(gdi_file_path=gdi_file_path, cue_file_path=cue_file_path, redump_bin_filename_format=redump_bin_filename_format)
+    gdi_file_path.unlink()
+
+
+def convert_gdi_to_cue(gdi_file_path: pathlib.Path, cue_file_path: pathlib.Path, redump_bin_filename_format: str):
+    gdi_track_lines = gdi_file_path.read_text().splitlines()[1:]  # The first line in the file is just the total number of tracks.
+
+    gdi_line_pattern = re.compile(r"^\s*(?P<track_number>[0-9]+)\s+(?P<frame_offset>[0-9]+)\s+(?P<gdi_track_mode>[0-9]+)\s+(?P<sector_size>[0-9]+)\s+(?P<track_filename>\".*?\")\s+(?P<disc_offset>[0-9]+)$")
+
+    with open(cue_file_path, "wt", encoding="utf-8", newline="\r\n") as cue_file:
+        # FIXME Write "REM SINGLE-DENSITY AREA" and "REM HIGH-DENSITY AREA" lines.
+
+        for gdi_track_line in gdi_track_lines:
+            gdi_track_match = gdi_line_pattern.match(gdi_track_line)
+
+            if gdi_track_match is None:
+                raise ConversionException(f"Line in .gdi file didn't match expected format: {gdi_track_line}", gdi_file_path, tool_output="")
+
+            gdi_track_mode = int(gdi_track_match.group("gdi_track_mode"))
+            sector_size = int(gdi_track_match.group("sector_size"))
+
+            if gdi_track_mode == 0:
+                cue_track_mode = "AUDIO"
+            elif gdi_track_mode == 4:
+                # This isn't a perfect, because a track with .gdi mode 4 and one of these sector sizes could also be a .cue MODE 2 track, but I don't see a way to determine that from the .gdi file:
+                if sector_size == 2048 or sector_size == 2352:
+                    cue_track_mode = f"MODE 1/{sector_size:04d}"
+                else:
+                    cue_track_mode = f"MODE 2/{sector_size:04d}"
+            else:
+                raise ConversionException(f"Unexpected .gdi track mode: {gdi_track_mode}", gdi_file_path, tool_output="")
+
+            track_number = int(gdi_track_match.group("track_number"))
+
+            cue_file.write(f'FILE "{redump_bin_filename_format.format(track_number=track_number)}" BINARY\n')
+            cue_file.write(f"  TRACK {track_number:02d} {cue_track_mode}\n")
+            # FIXME Write INDEX lines.
 
 
 def get_sha1hex_for_rvz(rvz_path, show_command_output: bool) -> str:
