@@ -148,9 +148,9 @@ def convert_gdi_to_cue(gdi_file_path: pathlib.Path, cue_file_path: pathlib.Path)
             elif gdi_track_mode == 4:
                 # This isn't a perfect, because a track with .gdi mode 4 and one of these sector sizes could also be a .cue MODE 2 track, but I don't see a way to determine that from the .gdi file:
                 if sector_size == 2048 or sector_size == 2352:
-                    cue_track_mode = f"MODE 1/{sector_size:04d}"
+                    cue_track_mode = f"MODE1/{sector_size:04d}"
                 else:
-                    cue_track_mode = f"MODE 2/{sector_size:04d}"
+                    cue_track_mode = f"MODE2/{sector_size:04d}"
             else:
                 raise ConversionException(f"Unexpected .gdi track mode: {gdi_track_mode}", gdi_file_path)
 
