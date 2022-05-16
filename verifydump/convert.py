@@ -156,11 +156,11 @@ def convert_gdi_to_cue(gdi_file_path: pathlib.Path, cue_file_path: pathlib.Path)
 
             cue_file.write(f'FILE "{redump_bin_filename_format.format(track_number=track_number)}" BINARY\n')
             cue_file.write(f"  TRACK {track_number:02d} {cue_track_mode}\n")
+            # The .gdi format apparently doesn't store information about the track pre-gaps, but it does seem that the pattern used on GD-ROM discs is predictable so we can just recreate them with some simple logic:
             if cue_track_mode == "AUDIO":
                 cue_file.write("    INDEX 00 00:00:00\n")
                 cue_file.write("    INDEX 01 00:02:00\n")
             else:
-                # The last track of the disc has
                 if track_number == 1 or track_number == 3:
                     # It's the first track of the single-density or high-density area.
                     cue_file.write("    INDEX 01 00:00:00\n")
