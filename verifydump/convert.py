@@ -91,8 +91,7 @@ def normalize_redump_bin_gdi_dump(cue_file_path: pathlib.Path):
     game_name = cue_file_path.stem
 
     bin_and_raw_file_paths = list(cue_file_path.parent.glob(f"{game_name}*.bin")) + list(cue_file_path.parent.glob(f"{game_name}*.raw"))
-    track_number_digits_needed = 2 if len(bin_and_raw_file_paths) >= 10 else 1
-    redump_bin_filename_format = game_name + " (Track {track_number:0" + str(track_number_digits_needed) + "d}).bin"
+    redump_bin_filename_format = get_redump_bin_filename_format(game_name, len(bin_and_raw_file_paths))
 
     track_number_parser = re.compile(f"^{re.escape(game_name)}(?P<track_number>[0-9]+)\\.(?:bin|raw)$")
 
@@ -106,12 +105,19 @@ def normalize_redump_bin_gdi_dump(cue_file_path: pathlib.Path):
 
     # The Datfile includes .cue files rather than .gdi files so convert our .gdi into a .cue:
     gdi_file_path = cue_file_path.with_suffix(".gdi")
-    convert_gdi_to_cue(gdi_file_path=gdi_file_path, cue_file_path=cue_file_path, redump_bin_filename_format=redump_bin_filename_format)
+    convert_gdi_to_cue(gdi_file_path=gdi_file_path, cue_file_path=cue_file_path)
     gdi_file_path.unlink()
 
 
-def convert_gdi_to_cue(gdi_file_path: pathlib.Path, cue_file_path: pathlib.Path, redump_bin_filename_format: str):
+def get_redump_bin_filename_format(game_name: str, number_of_tracks: int) -> str:
+    track_number_digits_needed = 2 if number_of_tracks >= 10 else 1
+    return game_name + " (Track {track_number:0" + str(track_number_digits_needed) + "d}).bin"
+
+
+def convert_gdi_to_cue(gdi_file_path: pathlib.Path, cue_file_path: pathlib.Path):
     gdi_track_lines = gdi_file_path.read_text().splitlines()[1:]  # The first line in the file is just the total number of tracks.
+
+    redump_bin_filename_format = get_redump_bin_filename_format(gdi_file_path.stem, len(gdi_track_lines))
 
     gdi_line_pattern = re.compile(r"^\s*(?P<track_number>[0-9]+)\s+(?P<lba>[0-9]+)\s+(?P<gdi_track_mode>[0-9]+)\s+(?P<sector_size>[0-9]+)\s+(?P<track_filename>\".*?\")\s+(?P<disc_offset>[0-9]+)$")
 

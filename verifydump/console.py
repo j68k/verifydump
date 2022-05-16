@@ -94,7 +94,7 @@ def convertgditocue_main():
 
     logging.basicConfig(format="%(message)s", level=logging.DEBUG)
     cue_file_path = pathlib.Path(args.cue_file)
-    convert_gdi_to_cue(gdi_file_path=pathlib.Path(args.gdi_file), cue_file_path=cue_file_path, redump_bin_filename_format=cue_file_path.stem + " (Track {track_number:02d}).bin")
+    convert_gdi_to_cue(gdi_file_path=pathlib.Path(args.gdi_file), cue_file_path=cue_file_path)
 
 
 def testgditocueconversion_main():
@@ -116,7 +116,7 @@ def testgditocueconversion_main():
             cue_filename = gdi_zip_member_info.filename.replace(".gdi", ".cue")
             converted_cue_path = pathlib.Path(temp_folder_path, cue_filename)
 
-            convert_gdi_to_cue(gdi_file_path=temp_gdi_path, cue_file_path=converted_cue_path, redump_bin_filename_format=converted_cue_path.stem + " (Track {track_number:02d}).bin")
+            convert_gdi_to_cue(gdi_file_path=temp_gdi_path, cue_file_path=converted_cue_path)
 
             with cue_zip.open(cue_filename) as cue_zip_member_file:
                 if cue_zip_member_file.read() == converted_cue_path.read_bytes():
