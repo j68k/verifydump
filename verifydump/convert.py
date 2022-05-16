@@ -115,6 +115,8 @@ def get_redump_bin_filename_format(game_name: str, number_of_tracks: int) -> str
 
 
 def convert_gdi_to_cue(gdi_file_path: pathlib.Path, cue_file_path: pathlib.Path):
+    logging.debug(f'Converting "{gdi_file_path.name}" to .cue format')
+
     gdi_track_lines = gdi_file_path.read_text().splitlines()[1:]  # The first line in the file is just the total number of tracks.
 
     redump_bin_filename_format = get_redump_bin_filename_format(gdi_file_path.stem, len(gdi_track_lines))
