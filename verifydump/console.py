@@ -1,7 +1,10 @@
 import argparse
 import logging
 import pathlib
+import shutil
 import sys
+import tempfile
+import zipfile
 
 from .convert import ConversionException, convert_chd_to_normalized_redump_dump_folder, convert_gdi_to_cue
 from .verify import VerificationException, verify_dumps
@@ -92,3 +95,31 @@ def convertgditocue_main():
     logging.basicConfig(format="%(message)s", level=logging.DEBUG)
     cue_file_path = pathlib.Path(args.cue_file)
     convert_gdi_to_cue(gdi_file_path=pathlib.Path(args.gdi_file), cue_file_path=cue_file_path, redump_bin_filename_format=cue_file_path.stem + " (Track {track_number:02d}).bin")
+
+
+def testgditocueconversion_main():
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("gdi_zip")
+    arg_parser.add_argument("cue_zip")
+    args = arg_parser.parse_args()
+
+    logging.basicConfig(format="%(message)s", level=logging.DEBUG)
+
+    with zipfile.ZipFile(args.gdi_zip) as gdi_zip, zipfile.ZipFile(args.cue_zip) as cue_zip, tempfile.TemporaryDirectory() as temp_folder_name:
+        temp_folder_path = pathlib.Path(temp_folder_name)
+
+        for gdi_zip_member_info in gdi_zip.infolist():
+            temp_gdi_path = pathlib.Path(temp_folder_path, gdi_zip_member_info.filename)
+            with open(temp_gdi_path, "wb") as temp_gdi_file, gdi_zip.open(gdi_zip_member_info) as gdi_zip_member_file:
+                shutil.copyfileobj(gdi_zip_member_file, temp_gdi_file)
+
+            cue_filename = gdi_zip_member_info.filename.replace(".gdi", ".cue")
+            converted_cue_path = pathlib.Path(temp_folder_path, cue_filename)
+
+            convert_gdi_to_cue(gdi_file_path=temp_gdi_path, cue_file_path=converted_cue_path, redump_bin_filename_format=converted_cue_path.stem + " (Track {track_number:02d}).bin")
+
+            with cue_zip.open(cue_filename) as cue_zip_member_file:
+                if cue_zip_member_file.read() == converted_cue_path.read_bytes():
+                    logging.info(f"Converted file matches: {cue_filename}")
+                else:
+                    logging.error(f"Converted file does not match: {cue_filename}")

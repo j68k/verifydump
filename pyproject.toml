@@ -20,6 +20,7 @@ build-backend = "poetry.core.masonry.api"
 verifydump = 'verifydump.console:verifydump_main'
 convertdump = 'verifydump.console:convertdump_main'
 convertgditocue = 'verifydump.console:convertgditocue_main'
+testgditocueconversion = 'verifydump.console:testgditocueconversion_main'
 
 [tool.black]
 line-length = 1000000
