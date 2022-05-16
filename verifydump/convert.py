@@ -65,7 +65,7 @@ def normalize_redump_bincue_dump(cue_file_path: pathlib.Path):
             pathlib.Path(dump_path, single_track_bin_name),
         )
 
-        cue_file_path.write_text(cue_file_path.read_text().replace(f'FILE "{original_bin_name}"', f'FILE "{single_track_bin_name}"'))
+        cue_file_path.write_text(cue_file_path.read_text().replace(f'FILE "{original_bin_name}"', f'FILE "{single_track_bin_name}"'), newline="\r\n")
 
     is_cue_iso_compatible = not has_multiple_tracks and re.match(r'^\s*FILE\s+"' + re.escape(f"{dump_name}.bin") + r'"\s*BINARY\s+TRACK 01 MODE1/2048\s+INDEX 01 00:00:00\s*$', cue_file_path.read_text())
     if is_cue_iso_compatible:
