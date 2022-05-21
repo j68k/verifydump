@@ -18,9 +18,10 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 verifydump = 'verifydump.console:verifydump_main'
-convertdump = 'verifydump.console:convertdump_main'
-convertgditocue = 'verifydump.console:convertgditocue_main'
-testgditocueconversion = 'verifydump.console:testgditocueconversion_main'
+# The following commands are useful for testing, but aren't production-ready for users:
+#convertdump = 'verifydump.console:convertdump_main'
+#convertgditocue = 'verifydump.console:convertgditocue_main'
+#testgditocueconversion = 'verifydump.console:testgditocueconversion_main'
 
 [tool.black]
 line-length = 1000000
