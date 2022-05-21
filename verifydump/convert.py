@@ -20,8 +20,9 @@ def convert_chd_to_normalized_redump_dump_folder(chd_path: pathlib.Path, redump_
 
     cue_file_path = pathlib.Path(redump_dump_folder, chd_path.stem + ".cue")
 
-    if system and system.lower() in ("Sega - Dreamcast".lower(), "dc", "Arcade - Sega - Chihiro".lower(), "chihiro", "Arcade - Sega - Naomi".lower(), "naomi", "Arcade - Sega - Naomi 2".lower(), "naomi2", "Arcade - Namco - Sega - Nintendo - Triforce".lower(), "trf"):
-        # These systems use GD-ROM media, which needs special handling. chdman does support GD-ROM dumps, but it only supports converting them to and from .gdi format and not to and from .cue format (it will attempt the conversion to or from .cue format, but the results will not be correct). The Redump Datfiles use .cue format, but we can still use chdman to get the correct .bin files by telling it to convert to .gdi format, because the .bin files are the same for .gdi and .cue format dumps.
+    if system and system.lower() in ("Sega - Dreamcast".lower(), "dc", "Arcade - Sega - Chihiro".lower(), "chihiro", "Arcade - Sega - Naomi".lower(), "naomi", "Arcade - Sega - Naomi 2".lower(), "naomi2", "Arcade - Namco - Sega - Nintendo - Triforce".lower(), "trf") and not "(Unl)".lower() in chd_path.stem.lower():
+        # These systems use GD-ROM media, which needs special handling. chdman does support GD-ROM dumps, but it only supports converting them to and from .gdi format and not to and from .cue format (it will attempt the conversion to or from .cue format, but the results will not be correct, at least as of chdman 0.240). The Redump Datfiles use .cue format, but we can still use chdman to get the correct .bin files by telling it to convert to .gdi format, because the .bin files are the same for .gdi and .cue format dumps. We then manually convert the .gdi into a .cue to verify it against the Datfile.
+        # The Dreamcast discs with "(Unl)" in the name are unlicensed games that were distributed on CD rather than GD-ROM, and we ignore those here so that they are handled using the normal .bin/.cue processing.
         convert_chd_to_bin_gdi(chd_path, cue_file_path.parent, show_command_output)
         normalize_redump_bin_gdi_dump(cue_file_path)
     else:
