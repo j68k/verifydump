@@ -23,7 +23,6 @@ def convert_chd_to_normalized_redump_dump_folder(chd_path: pathlib.Path, redump_
     if system and system.lower() in ("Sega - Dreamcast".lower(), "dc", "Arcade - Sega - Chihiro".lower(), "chihiro", "Arcade - Sega - Naomi".lower(), "naomi", "Arcade - Sega - Naomi 2".lower(), "naomi2", "Arcade - Namco - Sega - Nintendo - Triforce".lower(), "trf"):
         # These systems use GD-ROM media, which needs special handling. chdman does support GD-ROM dumps, but it only supports converting them to and from .gdi format and not to and from .cue format (it will attempt the conversion to or from .cue format, but the results will not be correct). The Redump Datfiles use .cue format, but we can still use chdman to get the correct .bin files by telling it to convert to .gdi format, because the .bin files are the same for .gdi and .cue format dumps.
         convert_chd_to_bin_gdi(chd_path, cue_file_path.parent, show_command_output)
-        # We could then convert the .gdi file to the .cue format that Redump's Datfiles refer to. That would be somewhat involved, though, and I don't think it's worth the effort when users can easily supply the original Redump .cue if they want to, so we actually just discard the .gdi file. We do rename the .bin files to match the Redump conventions, though:
         normalize_redump_bin_gdi_dump(cue_file_path)
     else:
         convert_chd_to_bincue(chd_path, cue_file_path, show_command_output)
