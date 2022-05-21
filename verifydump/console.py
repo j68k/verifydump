@@ -13,9 +13,9 @@ from .dat import DatParsingException, load_dat
 
 def arg_parser_with_common_args() -> argparse.ArgumentParser:
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("--verbose", action=argparse.BooleanOptionalAction, default=False)
-    arg_parser.add_argument("--show-command-output", action=argparse.BooleanOptionalAction, default=False)
-    arg_parser.add_argument("--extra-cue-source", metavar="FILE_OR_FOLDER_OR_ZIP")
+    arg_parser.add_argument("--verbose", action=argparse.BooleanOptionalAction, default=False, help="Show more detailed output about what the program is doing")
+    arg_parser.add_argument("--show-command-output", action=argparse.BooleanOptionalAction, default=False, help="Show the full output from external commands that are run")
+    arg_parser.add_argument("--extra-cue-source", metavar="FILE_OR_FOLDER_OR_ZIP", help=f"A source of .cue files that will be used to verify dumps in cases where {pathlib.Path(sys.argv[0]).stem} can't generate the exact original .cue file itself. These are needed when the original .cue file contains metadata that isn't storable in the .chd format, for example. The value you provide here can be a single .cue file if you're just verifying one dump, or it can be a folder or .zip containing many .cue files (such as the one of the Cuesheets .zip files available on the Redump download page).")
     return arg_parser
 
 
@@ -26,9 +26,9 @@ def handle_common_args(args):
 def verifydump_main():
     try:
         arg_parser = arg_parser_with_common_args()
-        arg_parser.add_argument("--allow-cue-file-mismatches", action=argparse.BooleanOptionalAction, default=False)
-        arg_parser.add_argument("dat_file", metavar="dat_file_or_zip")
-        arg_parser.add_argument("dump_file_or_folder", nargs="+")
+        arg_parser.add_argument("--allow-cue-file-mismatches", action=argparse.BooleanOptionalAction, default=False, help=f"If the .cue file that {pathlib.Path(sys.argv[0]).stem} generates doesn't match the original dump or extra provided .cue file then it is usually reported as an error. If this option is used then the mismatch is still reported, but isn't treated as an error.")
+        arg_parser.add_argument("dat_file", metavar="dat_file_or_zip", help="The Datfile that your dumps will be verified against. It can be zipped.")
+        arg_parser.add_argument("dump_file_or_folder", nargs="+", help="The dump files to verify. Specify any number of .chd files, .rvz files, or folders containing those.")
         args = arg_parser.parse_args()
 
         handle_common_args(args)
@@ -70,7 +70,7 @@ def verifydump_main():
 def convertdump_main():
     arg_parser = arg_parser_with_common_args()
     arg_parser.add_argument("--output-folder", default=".")
-    arg_parser.add_argument("--system", default=None, help=f"The name of the system the dumps are for. Some systems require special handling to correctly convert dumps (such as Dreamcast and other systems that use GD-ROM media). Use the full system name that is in the Redump Datfile's header <name> field, or use the short name for the system that appears in Redump web site URLs.")
+    arg_parser.add_argument("--system", default=None, help="The name of the system the dumps are for. Some systems require special handling to correctly convert dumps (such as Dreamcast and other systems that use GD-ROM media). Use the full system name that is in the Redump Datfile's header <name> field, or use the short name for the system that appears in Redump web site URLs.")
     arg_parser.add_argument("dump_file", nargs="+")
     args = arg_parser.parse_args()
 
