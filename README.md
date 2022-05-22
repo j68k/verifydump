@@ -64,6 +64,12 @@ Dump .bin files verified correct and complete, and .cue essential structure matc
 ```
 which is a slightly long-winded way of saying everything is great.
 
+## Avoiding SSD wear from temporary files
+
+Because verifydump uses external tools to do its conversions, it necessarily creates temporary files for the converted files, and then promptly deletes them after verification. That's a bit unfortunate, because the lifetime of an SSD is limited by the amount of data that's written to it, so it's somewhat wasteful to write big files and then delete them again immediately. **It's probably not worth worrying about this if you're just going to verify your game collection occasionally**, but if you'll be verifying it very frequently, or if you have a huge collection then it might be worth using a [RAM drive](https://en.wikipedia.org/wiki/RAM_drive) to store the temporary files, so that they don't need to be written to your SSD.
+
+On Windows I've had success using [OSFMount](https://www.osforensics.com/tools/mount-disk-images.html) to mount a new RAM drive with the drive letter T:, and then in the PowerShell terminal that I run verifydump in, setting the TEMP environment variable with `$Env:TEMP="T:\"`. The RAM drive needs to be large enough to fit double the uncompressed size of the largest dump that you will verify, so ~1.5GB is good for CD images, or ~20GB for DVD images.
+
 ## Bugs/questions
 
 Please report any bugs or ask any questions by opening an [issue on the project's GitHub](issues). Please assign an appropriate label to your issue to keep things organized.
