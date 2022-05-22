@@ -1,8 +1,18 @@
 [tool.poetry]
 name = "verifydump"
 version = "0.1.0"
-description = ""
+description = "A tool for verifying compressed (.chd/.rvz) disc dumps against a Datfile"
+license = "MIT"
 authors = ["j68k"]
+readme = "README.md"
+homepage = "https://github.com/j68k/verifydump"
+repository = "https://github.com/j68k/verifydump.git"
+classifiers = [
+    "Environment :: Console",
+    "Topic :: Games/Entertainment",
+    "Topic :: System :: Archiving :: Compression",
+    "Topic :: Utilities",
+]
 
 [tool.poetry.dependencies]
 python = "^3.10"
