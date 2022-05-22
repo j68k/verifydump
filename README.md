@@ -12,7 +12,7 @@ To convert the disc images between formats verifydump uses third-party tools.
 
 To verify .chd files you need both of:
 - chdman, which is made by and [distributed with MAME](https://www.mamedev.org/release.html)
-- [binmerge](https://github.com/putnam/binmerge)
+- [binmerge](https://github.com/putnam/binmerge/releases)
 
 To verify .rvz files you need:
 - DolphinTool, which is made by and [distributed with Dolphin](https://dolphin-emu.org/download/)
@@ -21,7 +21,7 @@ The tools must be available in your system's PATH so that verifydump can find th
 
 ## Installation
 
-You can download a .exe of verifydump for Windows on the [releases](releases) page. The program is written in Python so on Linux or macOS you can install it using [pipx](https://pypa.github.io/pipx/) with:
+You can download a .exe of verifydump for Windows on the [releases](https://github.com/j68k/verifydump/releases) page. The program is written in Python so on Linux or macOS you can install it using [pipx](https://pypa.github.io/pipx/) with:
 ```Shell
 pipx install verifydump
 ```
@@ -72,13 +72,13 @@ On Windows I've had success using [OSFMount](https://www.osforensics.com/tools/m
 
 ## Bugs/questions
 
-Please report any bugs or ask any questions by opening an [issue on the project's GitHub](issues). Please assign an appropriate label to your issue to keep things organized.
+Please report any bugs or ask any questions by opening an [issue on the project's GitHub](https://github.com/j68k/verifydump/issues). Please assign an appropriate label to your issue to keep things organized.
 
 ## Contributing/future work
 
 Pull requests for bug fixes are very welcome, of course. If you're thinking of doing substantial work on a new feature then please open a new issue to discuss it first so we can make sure that we're on the same page about the proposed feature/design.
 
-There may be some [open issues for proposed new features](labels/enhancement) already, and please feel free to star those issues to indicate which ones should be prioritized.
+There may be some [open issues for proposed new features](https://github.com/j68k/verifydump/labels/enhancement) already, and please feel free to star those issues to indicate which ones should be prioritized.
 
 One feature that probably won't be added is support for other compressed image formats, unless they have clear advantages over the ones that are supported now. I'd prefer to nudge users towards whatever the best format is for a given system rather supporting every format just because it's possible.
 
