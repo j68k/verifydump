@@ -82,7 +82,6 @@ def convertdump_main():
             pathlib.Path(args.output_folder),
             system=args.system,
             show_command_output=args.show_command_output,
-            extra_cue_source=pathlib.Path(args.extra_cue_source) if args.extra_cue_source else None,
         )
 
 
