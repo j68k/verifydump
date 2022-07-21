@@ -27,6 +27,7 @@ def verifydump_main():
     try:
         arg_parser = arg_parser_with_common_args()
         arg_parser.add_argument("--allow-cue-file-mismatches", action=argparse.BooleanOptionalAction, default=False, help=f"If the .cue file that {pathlib.Path(sys.argv[0]).stem} generates doesn't match the original dump or extra provided .cue file then it is usually reported as an error. If this option is used then the mismatch is still reported, but isn't treated as an error.")
+        arg_parser.add_argument("--report-unverified", action=argparse.BooleanOptionalAction, default=False, help="Reports games that are present in the Datfile but were not successfully verified.")
         arg_parser.add_argument("dat_file", metavar="dat_file_or_zip", help="The Datfile that your dumps will be verified against. It can be zipped.")
         arg_parser.add_argument("dump_file_or_folder", nargs="+", help="The dump files to verify. Specify any number of .chd files, .rvz files, or folders containing those.")
         args = arg_parser.parse_args()
@@ -46,6 +47,14 @@ def verifydump_main():
 
         if len(verified_games) > 1:
             print(f"Successfully verified {len(verified_games)} dumps")
+
+        if args.report_unverified:
+            if len(verified_games) < len(dat.games):
+                unverified_games = list(set(dat.games) - set(verified_games))
+                unverified_games.sort(key=lambda x: x.name)
+                print(f"{len(unverified_games)} game(s) present in the Datfile but not successfully verified:")
+                for unverified_game in unverified_games:
+                    print(f'"{unverified_game.name}"')
 
         if len(errors) > 0:
             print(f"{len(errors)} dumps had errors:" if len(errors) > 1 else "1 dump had an error:", file=sys.stderr)
