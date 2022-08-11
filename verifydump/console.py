@@ -9,6 +9,7 @@ import zipfile
 from .convert import ConversionException, convert_chd_to_normalized_redump_dump_folder, convert_gdi_to_cue
 from .verify import VerificationException, verify_dumps
 from .dat import DatParsingException, load_dat
+from .cache import initialize_cache
 
 
 def arg_parser_with_common_args() -> argparse.ArgumentParser:
@@ -28,11 +29,22 @@ def verifydump_main():
         arg_parser = arg_parser_with_common_args()
         arg_parser.add_argument("--allow-cue-file-mismatches", action=argparse.BooleanOptionalAction, default=False, help=f"If the .cue file that {pathlib.Path(sys.argv[0]).stem} generates doesn't match the original dump or extra provided .cue file then it is usually reported as an error. If this option is used then the mismatch is still reported, but isn't treated as an error.")
         arg_parser.add_argument("--report-unverified", action=argparse.BooleanOptionalAction, default=False, help="Reports games that are present in the Datfile but were not successfully verified.")
+        arg_parser.add_argument("--cache_file", metavar="cache_file", help="Optional cache file for caching verification results to avoid re-processing files.")
         arg_parser.add_argument("dat_file", metavar="dat_file_or_zip", help="The Datfile that your dumps will be verified against. It can be zipped.")
         arg_parser.add_argument("dump_file_or_folder", nargs="+", help="The dump files to verify. Specify any number of .chd files, .rvz files, or folders containing those.")
         args = arg_parser.parse_args()
 
         handle_common_args(args)
+
+        if args.cache_file:
+            try:
+                cache_file = pathlib.Path(args.cache_file)
+                initialize_cache(cache_file)
+            except Exception as e:
+                print(f"Error initializing cache: {e}")
+                sys.exit(1)
+        else:
+            cache_file = None
 
         try:
             dat = load_dat(pathlib.Path(args.dat_file))
@@ -43,7 +55,7 @@ def verifydump_main():
             print(f"Error reading Datfile: {e}")
             sys.exit(1)
 
-        (verified_games, errors) = verify_dumps(dat, [pathlib.Path(i) for i in args.dump_file_or_folder], show_command_output=args.show_command_output, allow_cue_mismatches=args.allow_cue_file_mismatches, extra_cue_source=pathlib.Path(args.extra_cue_source) if args.extra_cue_source else None)
+        (verified_games, errors) = verify_dumps(dat, [pathlib.Path(i) for i in args.dump_file_or_folder], show_command_output=args.show_command_output, allow_cue_mismatches=args.allow_cue_file_mismatches, extra_cue_source=pathlib.Path(args.extra_cue_source) if args.extra_cue_source else None, cache=cache_file)
 
         if len(verified_games) > 1:
             print(f"Successfully verified {len(verified_games)} dumps")
