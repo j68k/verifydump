@@ -53,6 +53,10 @@ def normalize_redump_bincue_dump(cue_file_path: pathlib.Path):
     dump_path = cue_file_path.parent
     dump_name = cue_file_path.stem
 
+    #Fix to allow '[' and ']' in file names
+    mapping_table = str.maketrans({'[': '[[]', ']': '[]]'})
+    dump_name = dump_name.translate(mapping_table)
+
     has_multiple_tracks = len(list(dump_path.glob(f"{dump_name} (Track *).bin"))) > 1
     if not has_multiple_tracks:
         original_bin_name = f"{dump_name} (Track 1).bin"
