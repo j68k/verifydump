@@ -1,8 +1,10 @@
+import functools
 import glob
 import logging
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import tempfile
 
@@ -179,10 +181,29 @@ def convert_gdi_to_cue(gdi_file_path: pathlib.Path, cue_file_path: pathlib.Path)
                     cue_file.write("    INDEX 01 00:02:00\n")
 
 
+@functools.cache
+def find_binary(*names):
+    for name in names:
+        fullpath = shutil.which(name)
+        if fullpath:
+            return fullpath
+
+    # Nothing was found. Return one of the candidates so that the caller can give a clearer error message:
+    return names[0]
+
+
 def get_sha1hex_for_rvz(rvz_path, show_command_output: bool) -> str:
     with tempfile.TemporaryDirectory() as dolphin_tool_user_folder_name:
         dolphintool_result = subprocess.run(
-            ["DolphinTool", "verify", "-u", dolphin_tool_user_folder_name, "-i", str(rvz_path), "--algorithm=sha1"],
+            [
+                find_binary("DolphinTool", "dolphin-tool"),
+                "verify",
+                "-u",
+                dolphin_tool_user_folder_name,
+                "-i",
+                str(rvz_path),
+                "--algorithm=sha1",
+            ],
             capture_output=True,
             text=True,
         )
