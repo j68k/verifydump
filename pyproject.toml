@@ -15,7 +15,7 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.10,<3.11" # The upper-bound here is just because that is required for PyInstaller.
+python = "^3.10"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.1.1"
