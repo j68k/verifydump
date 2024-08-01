@@ -1,3 +1,4 @@
+import glob
 import logging
 import os
 import pathlib
@@ -53,7 +54,7 @@ def normalize_redump_bincue_dump(cue_file_path: pathlib.Path):
     dump_path = cue_file_path.parent
     dump_name = cue_file_path.stem
 
-    has_multiple_tracks = len(list(dump_path.glob(f"{dump_name} (Track *).bin"))) > 1
+    has_multiple_tracks = len(list(dump_path.glob(glob.escape(dump_name) + " (Track *).bin"))) > 1
     if not has_multiple_tracks:
         # binmerge < 1.0.3 named a single-track split "<name> (Track 1).bin", which we rename to the Redump-canonical "<name>.bin". binmerge >= 1.0.3 already emits "<name>.bin" directly for a single track, so there is nothing to rename:
         original_bin_name = f"{dump_name} (Track 1).bin"
@@ -92,7 +93,7 @@ def convert_chd_to_bin_gdi(chd_file_path: pathlib.Path, output_folder_path: path
 def normalize_redump_bin_gdi_dump(cue_file_path: pathlib.Path):
     game_name = cue_file_path.stem
 
-    bin_and_raw_file_paths = list(cue_file_path.parent.glob(f"{game_name}*.bin")) + list(cue_file_path.parent.glob(f"{game_name}*.raw"))
+    bin_and_raw_file_paths = list(cue_file_path.parent.glob(glob.escape(game_name) + "*.bin")) + list(cue_file_path.parent.glob(glob.escape(game_name) + "*.raw"))
     redump_bin_filename_format = get_redump_bin_filename_format(game_name, len(bin_and_raw_file_paths))
 
     track_number_parser = re.compile(f"^{re.escape(game_name)}(?P<track_number>[0-9]+)\\.(?:bin|raw)$")
