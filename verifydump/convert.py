@@ -58,14 +58,19 @@ def normalize_redump_bincue_dump(cue_file_path: pathlib.Path):
         original_bin_name = f"{dump_name} (Track 1).bin"
         single_track_bin_name = f"{dump_name}.bin"
 
-        logging.debug(f'Renaming "{original_bin_name}" to "{single_track_bin_name}" because there is only one .bin file in the dump')
+        # binmerge < 1.0.3 named a single-track split "<name> (Track 1).bin", which we rename to
+        # the Redump-canonical "<name>.bin". binmerge >= 1.0.3 already emits "<name>.bin" directly
+        # for a single track, so there is nothing to rename — only do it when the "(Track 1)" file
+        # is actually present (otherwise os.rename raises FileNotFoundError against modern binmerge).
+        if pathlib.Path(dump_path, original_bin_name).exists():
+            logging.debug(f'Renaming "{original_bin_name}" to "{single_track_bin_name}" because there is only one .bin file in the dump')
 
-        os.rename(
-            pathlib.Path(dump_path, original_bin_name),
-            pathlib.Path(dump_path, single_track_bin_name),
-        )
+            os.rename(
+                pathlib.Path(dump_path, original_bin_name),
+                pathlib.Path(dump_path, single_track_bin_name),
+            )
 
-        cue_file_path.write_text(cue_file_path.read_text().replace(f'FILE "{original_bin_name}"', f'FILE "{single_track_bin_name}"'), newline="\r\n")
+            cue_file_path.write_text(cue_file_path.read_text().replace(f'FILE "{original_bin_name}"', f'FILE "{single_track_bin_name}"'), newline="\r\n")
 
     is_cue_iso_compatible = not has_multiple_tracks and re.match(r'^\s*FILE\s+"' + re.escape(f"{dump_name}.bin") + r'"\s*BINARY\s+TRACK 01 MODE1/2048\s+INDEX 01 00:00:00\s*$', cue_file_path.read_text())
     if is_cue_iso_compatible:
