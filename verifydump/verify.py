@@ -9,6 +9,7 @@ import tempfile
 import typing
 import zipfile
 
+from .cache import cache_chd, get_cached_chd, cache_rvz, get_cached_rvz
 from .convert import ConversionException, convert_chd_to_normalized_redump_dump_folder, get_sha1hex_for_rvz
 from .dat import Dat, Game
 
@@ -32,12 +33,20 @@ class VerificationResult:
         self.cue_verification_result = cue_verification_result
 
 
-def verify_chd(chd_path: pathlib.Path, dat: Dat, show_command_output: bool, allow_cue_mismatches: bool, extra_cue_source: pathlib.Path) -> Game:
+def verify_chd(chd_path: pathlib.Path, dat: Dat, show_command_output: bool, allow_cue_mismatches: bool, extra_cue_source: pathlib.Path, cache: pathlib.Path) -> Game:
     logging.debug(f'Verifying dump file "{chd_path}"')
     with tempfile.TemporaryDirectory() as redump_dump_folder_name:
-        redump_dump_folder = pathlib.Path(redump_dump_folder_name)
-        convert_chd_to_normalized_redump_dump_folder(chd_path, redump_dump_folder, system=dat.system, show_command_output=show_command_output)
-        verification_result = verify_redump_dump_folder(redump_dump_folder, dat=dat, extra_cue_source=extra_cue_source)
+        verification_result = None
+        if cache:
+            already_cached = False
+            (cache_matched_game, cached_cue_verification_result) = get_cached_chd(chd_path, dat)
+            if cache_matched_game and cached_cue_verification_result:
+                already_cached = True
+                verification_result = VerificationResult(cache_matched_game, CueVerificationResult[cached_cue_verification_result])
+        if not verification_result:
+            redump_dump_folder = pathlib.Path(redump_dump_folder_name)
+            convert_chd_to_normalized_redump_dump_folder(chd_path, redump_dump_folder, system=dat.system, show_command_output=show_command_output)
+            verification_result = verify_redump_dump_folder(redump_dump_folder, dat=dat, extra_cue_source=extra_cue_source)
 
         if verification_result.cue_verification_result in (CueVerificationResult.NO_CUE_NEEDED, CueVerificationResult.GENERATED_CUE_VERIFIED_EXACTLY):
             logging.info(f'Dump verified correct and complete: "{verification_result.game.name}"')
@@ -61,6 +70,9 @@ def verify_chd(chd_path: pathlib.Path, dat: Dat, show_command_output: bool, allo
                 raise VerificationException(message)
         else:
             raise Exception(f"Unhandled CueVerificationResult value: {verification_result.cue_verification_result}")
+
+        if cache and not already_cached:
+            cache_chd(chd_path, verification_result.game, verification_result.cue_verification_result.name)
 
         return verification_result.game
 
@@ -207,10 +219,17 @@ def verify_redump_dump_folder(dump_folder: pathlib.Path, dat: Dat, extra_cue_sou
     return VerificationResult(game=game, cue_verification_result=CueVerificationResult.GENERATED_CUE_DOES_NOT_MATCH_ESSENTIALS_FROM_EXTRA_CUE)
 
 
-def verify_rvz(rvz_path: pathlib.Path, dat: Dat, show_command_output: bool) -> Game:
+def verify_rvz(rvz_path: pathlib.Path, dat: Dat, show_command_output: bool, cache: pathlib.Path) -> Game:
     logging.debug(f'Verifying dump file "{rvz_path}"')
 
-    sha1hex = get_sha1hex_for_rvz(rvz_path, show_command_output=show_command_output)
+    sha1hex = None
+    if cache:
+        already_cached = False
+        sha1hex = get_cached_rvz(rvz_path)
+        if sha1hex:
+            already_cached = True
+    if not sha1hex:
+        sha1hex = get_sha1hex_for_rvz(rvz_path, show_command_output=show_command_output)
 
     roms_with_matching_sha1 = dat.roms_by_sha1hex.get(sha1hex)
 
@@ -226,10 +245,13 @@ def verify_rvz(rvz_path: pathlib.Path, dat: Dat, show_command_output: bool) -> G
         raise VerificationException(f'Dump file "{rvz_path.name}" found in Dat, but it should be named {list_of_rom_names_that_match_sha1}')
 
     logging.info(f'Dump verified correct and complete: "{rom_with_matching_sha1_and_name.game.name}"')
+
+    if cache and not already_cached:
+        cache_rvz(rvz_path, sha1hex)
     return rom_with_matching_sha1_and_name.game
 
 
-def verify_dumps(dat: Dat, dump_file_or_folder_paths: typing.List[pathlib.Path], show_command_output: bool, allow_cue_mismatches: bool, extra_cue_source: pathlib.Path) -> tuple[list, list]:
+def verify_dumps(dat: Dat, dump_file_or_folder_paths: typing.List[pathlib.Path], show_command_output: bool, allow_cue_mismatches: bool, extra_cue_source: pathlib.Path, cache: pathlib.Path) -> tuple[list, list]:
     verified_games = []
     errors = []
 
@@ -237,9 +259,9 @@ def verify_dumps(dat: Dat, dump_file_or_folder_paths: typing.List[pathlib.Path],
         suffix_lower = dump_path.suffix.lower()
         try:
             if suffix_lower == ".chd":
-                verified_games.append(verify_chd(dump_path, dat=dat, show_command_output=show_command_output, allow_cue_mismatches=allow_cue_mismatches, extra_cue_source=extra_cue_source))
+                verified_games.append(verify_chd(dump_path, dat=dat, show_command_output=show_command_output, allow_cue_mismatches=allow_cue_mismatches, extra_cue_source=extra_cue_source, cache=cache))
             elif suffix_lower == ".rvz":
-                verified_games.append(verify_rvz(dump_path, dat=dat, show_command_output=show_command_output))
+                verified_games.append(verify_rvz(dump_path, dat=dat, show_command_output=show_command_output, cache=cache))
             elif error_if_unsupported:
                 raise VerificationException(f'{pathlib.Path(sys.argv[0]).stem} doesn\'t know how to handle "{suffix_lower}" dumps')
         except VerificationException as e:
